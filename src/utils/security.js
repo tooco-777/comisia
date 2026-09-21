@@ -23,16 +23,16 @@ export const checkPasswordStrength = (password) => {
 
   if (password.length > 0) {
     if (score <= 1) {
-      label = '脆弱 ❌ (8文字以上で大・小文字・数字を含めてください)';
+      label = '脆弱 (8文字以上で大・小文字・数字を含めてください)';
       color = '#ef4444';
     } else if (score === 2) {
-      label = '普通 ⚠️ (記号などを追加すると強固になります)';
+      label = '普通 (記号などを追加すると強固になります)';
       color = '#f59e0b';
     } else if (score === 3) {
-      label = '強固 ✅';
+      label = '強固';
       color = '#10b981';
     } else {
-      label = '非常に強固 🛡️✨';
+      label = '非常に強固';
       color = '#06b6d4';
     }
   }

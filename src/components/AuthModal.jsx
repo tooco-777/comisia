@@ -268,14 +268,14 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
             <ShieldCheck size={24} />
           </div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
-            {mode === 'login' && 'アカウントログイン'}
+            {mode === 'login' && 'ログイン'}
             {mode === 'register' && '新規アカウント登録'}
             {mode === 'email-sent' && '認証メールを確認してください'}
             {mode === 'forgot' && 'パスワードの再設定'}
             {mode === 'forgot-sent' && '再設定メールを送信しました'}
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {mode === 'login' && 'Comisia の創作活動・依頼受付をはじめましょう'}
+            {mode === 'login' && 'Comisia で創作活動・依頼受付をはじめましょう'}
             {mode === 'register' && 'イラストの受託や作品販売をすぐにスタートできます'}
           </p>
         </div>
@@ -350,16 +350,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
             </div>
 
             <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: '600' }}>パスワード</label>
-                <button
-                  type="button"
-                  onClick={() => setMode('forgot')}
-                  style={{ background: 'none', border: 'none', color: '#6495ed', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                  パスワードをお忘れですか？
-                </button>
-              </div>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>パスワード</label>
               <div style={{ position: 'relative' }}>
                 <input 
                   type="password" className="form-input"
@@ -369,6 +360,15 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
                   style={{ width: '100%', paddingLeft: '2.5rem' }}
                 />
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              </div>
+              <div style={{ textAlign: 'right', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setMode('forgot')}
+                  style={{ background: 'none', border: 'none', color: '#6495ed', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  パスワードをお忘れですか？
+                </button>
               </div>
               {errors.password && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.password}</div>}
             </div>
@@ -501,7 +501,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
             </p>
 
             <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem', textAlign: 'left' }}>
-              💡 メールが届かない場合：<br />
+              メールが届かない場合：<br />
               ・迷惑メールフォルダをご確認ください。<br />
               ・メールアドレスに間違いがないかご確認ください。
             </div>
