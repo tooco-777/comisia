@@ -22,7 +22,7 @@ export const sendInquiryAutoReply = async ({ name, email, subject, message }) =>
       <p style="font-size: 12px; color: #94a3b8; line-height: 1.5;">※本メールは送信専用アドレスより自動送信されています。</p>
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
       <p style="font-size: 12px; color: #64748b; text-align: center; margin: 0;">
-        <strong>Comisia（コミシア）運営事務局</strong><br>
+        <strong>Comisia </strong><br>
         <a href="https://comisia.app" style="color: #6495ed; text-decoration: none;">https://comisia.app</a> | contact@comisia.app
       </p>
     </div>
@@ -51,7 +51,7 @@ export const sendCommissionAutoReply = async ({ name, email, planType, budget, d
 
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
       <p style="font-size: 12px; color: #64748b; text-align: center; margin: 0;">
-        <strong>Comisia（コミシア）運営事務局</strong><br>
+        <strong>Comisia </strong><br>
         <a href="https://comisia.app" style="color: #6495ed; text-decoration: none;">https://comisia.app</a> | contact@comisia.app
       </p>
     </div>
