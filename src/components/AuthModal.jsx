@@ -275,8 +275,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
             {mode === 'forgot-sent' && '再設定メールを送信しました'}
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {mode === 'login' && 'Comisia で創作活動・依頼受付をはじめましょう'}
-            {mode === 'register' && 'イラストの受託や作品販売をすぐにスタートできます'}
+            {(mode === 'login' || mode === 'register') && 'Comisia で創作活動・依頼受付をはじめましょう'}
           </p>
         </div>
 
