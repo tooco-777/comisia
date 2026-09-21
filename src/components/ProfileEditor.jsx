@@ -53,7 +53,13 @@ export default function ProfileEditor({ profile, onSaveProfile, adopts, onSaveAd
 
     onSaveProfile(safeData);
     setSavedMessage(true);
-    setTimeout(() => setSavedMessage(false), 2000);
+
+    // 保存後、マイページ（公開ページ）へ自動移動
+    if (onGoToPublicPage) {
+      setTimeout(() => {
+        onGoToPublicPage();
+      }, 500);
+    }
   };
 
   const handleAddAdopt = async (e) => {
@@ -135,9 +141,6 @@ export default function ProfileEditor({ profile, onSaveProfile, adopts, onSaveAd
               <Check size={16} /> 保存しました
             </span>
           )}
-          <button className="btn btn-outline" onClick={onGoToPublicPage} style={{ fontSize: '0.85rem' }}>
-            自分の公開ページを見る <ExternalLink size={14} />
-          </button>
         </div>
       </div>
 
@@ -216,7 +219,7 @@ export default function ProfileEditor({ profile, onSaveProfile, adopts, onSaveAd
         </div>
 
         <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-          <Save size={16} /> プロフィール変更を保存
+          <Save size={16} /> プロフィールを保存
         </button>
       </form>
 

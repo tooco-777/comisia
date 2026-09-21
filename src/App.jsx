@@ -226,7 +226,9 @@ export default function App() {
                 ...prev,
                 [activeHandle]: { ...prev[activeHandle], ...newProf }
               }));
-              showToast('プロフィール変更を保存しました');
+              showToast('プロフィールを保存しました');
+              setView('publicPage');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             adopts={adopts}
             onSaveAdopts={(newAdopts) => {

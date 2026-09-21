@@ -29,14 +29,6 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
           {currentUser ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <button 
-                className={`btn ${currentView === 'editor' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-                onClick={() => setView('editor')}
-              >
-                <Edit3 size={15} /> マイページ編集
-              </button>
-
-              <button 
                 className="btn btn-outline" 
                 style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
                 onClick={onLogout}
@@ -47,18 +39,18 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button 
-                className="btn btn-secondary" 
-                style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem' }}
-                onClick={() => onOpenAuth('login')}
-              >
-                <LogIn size={15} /> ログイン
-              </button>
-              <button 
                 className="btn btn-primary" 
                 style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
                 onClick={() => onOpenAuth('register')}
               >
                 新規登録
+              </button>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem' }}
+                onClick={() => onOpenAuth('login')}
+              >
+                <LogIn size={15} /> ログイン
               </button>
             </div>
           )}
