@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { X, Lock, Mail, User, ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { X, Lock, Mail, User, ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, RefreshCw, KeyRound } from 'lucide-react';
 import { 
   checkPasswordStrength, 
   hashPassword, 
-  generateVerificationCode, 
   validateEmail,
   checkLockoutStatus,
   recordFailedAttempt,
@@ -12,7 +11,7 @@ import {
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export default function AuthModal({ initialMode = 'login', onClose, onLoginSuccess }) {
-  const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'verify'
+  const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'email-sent' | 'forgot' | 'forgot-sent'
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -22,20 +21,55 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
   });
 
   const [errors, setErrors] = useState({});
-  const [verificationCode, setVerificationCode] = useState('');
-  const [inputCode, setInputCode] = useState('');
+  const [registeredEmail, setRegisteredEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const passwordStrength = checkPasswordStrength(form.password);
 
-  // ログイン処理
+  // Google OAuth 認証
+  const handleGoogleAuth = async () => {
+    setSubmitting(true);
+    setErrors({});
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) {
+        setSubmitting(false);
+        setErrors({ global: `Google認証エラー: ${error.message}` });
+      }
+      return;
+    }
+
+    // デモ・未接続時のフォールバック動作
+    setTimeout(() => {
+      setSubmitting(false);
+      onLoginSuccess({
+        id: 'demo-google-user',
+        handle: 'google_creator',
+        name: 'Google アカウントユーザー',
+        email: 'google-demo@example.com',
+        verified: true
+      });
+      onClose();
+    }, 800);
+  };
+
+  // メール＆パスワード ログイン
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
     const errs = {};
 
     const status = checkLockoutStatus(form.email);
     if (status.isLocked) {
-      setErrors({ global: `セキュリティ保護のため、あと ${status.remainingSec} 秒間ログインが制限されています。` });
+      setErrors({ global: `連続失敗により保護中。あと ${status.remainingSec} 秒間ログインが制限されています。` });
       return;
     }
 
@@ -58,7 +92,11 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
       if (error) {
         recordFailedAttempt(form.email);
         setSubmitting(false);
-        setErrors({ global: `ログイン認証エラー: ${error.message}` });
+        if (error.message.includes('Email not confirmed')) {
+          setErrors({ global: 'メール認証が完了していません。届いた認証メール内のリンクをクリックしてください。' });
+        } else {
+          setErrors({ global: `ログイン失敗: メールアドレスまたはパスワードが正しくありません。` });
+        }
         return;
       }
 
@@ -76,28 +114,26 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
       return;
     }
 
-    const hashedPassword = await hashPassword(form.password);
-
+    // デモ動作
     setTimeout(() => {
       setSubmitting(false);
       resetFailedAttempts(form.email);
 
       const handleName = form.email.split('@')[0] || 'creator';
-      const userData = {
+      onLoginSuccess({
         handle: handleName,
         name: form.name || 'クリエイターユーザー',
         email: form.email,
         verified: true
-      };
-
-      onLoginSuccess(userData);
+      });
       onClose();
     }, 600);
   };
 
-  // 新規登録処理 (ステップ1)
-  const handleRegisterSubmit = (e) => {
+  // メール新規登録処理
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
     const errs = {};
 
     if (!form.name.trim()) errs.name = 'お名前 / 表示名を入力してください';
@@ -117,24 +153,10 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
       return;
     }
 
-    const code = generateVerificationCode();
-    setVerificationCode(code);
-    setMode('verify');
-    setErrors({});
-  };
-
-  // 2段階検証コード処理 (ステップ2)
-  const handleVerifySubmit = async (e) => {
-    e.preventDefault();
-    if (inputCode !== verificationCode) {
-      setErrors({ code: '検証コードが正しくありません' });
-      return;
-    }
-
     setSubmitting(true);
+    const handleName = form.email.split('@')[0] || 'creator';
 
     if (isSupabaseConfigured && supabase) {
-      const handleName = form.email.split('@')[0] || 'creator';
       const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
@@ -142,7 +164,8 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
           data: {
             name: form.name,
             handle: handleName
-          }
+          },
+          emailRedirectTo: window.location.origin
         }
       });
 
@@ -153,204 +176,440 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
       }
 
       setSubmitting(false);
-      onLoginSuccess({
-        id: data.user?.id,
-        handle: handleName,
-        name: form.name,
-        email: form.email,
-        verified: true
-      });
-      onClose();
+      setRegisteredEmail(form.email);
+      setMode('email-sent');
       return;
     }
 
-    const hashedPassword = await hashPassword(form.password);
-
+    // デモ・未接続時の動作
     setTimeout(() => {
       setSubmitting(false);
-      const handleName = form.email.split('@')[0] || 'creator';
-
-      const newUserData = {
-        handle: handleName,
-        name: form.name,
-        email: form.email,
-        passwordHash: hashedPassword,
-        verified: true
-      };
-
-      onLoginSuccess(newUserData);
-      onClose();
+      setRegisteredEmail(form.email);
+      setMode('email-sent');
     }, 700);
   };
 
+  // 認証メール再送信
+  const handleResendEmail = async () => {
+    if (resendCooldown > 0) return;
+    if (isSupabaseConfigured && supabase && registeredEmail) {
+      await supabase.auth.resend({
+        type: 'signup',
+        email: registeredEmail,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      });
+    }
+    setResendCooldown(60);
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // パスワード再設定メール送信
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setErrors({});
+    if (!form.email.trim() || !validateEmail(form.email)) {
+      setErrors({ email: '有効なメールアドレスを入力してください' });
+      return;
+    }
+
+    setSubmitting(true);
+
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+        redirectTo: `${window.location.origin}`
+      });
+
+      if (error) {
+        setSubmitting(false);
+        setErrors({ global: `パスワード再設定エラー: ${error.message}` });
+        return;
+      }
+    }
+
+    setSubmitting(false);
+    setRegisteredEmail(form.email);
+    setMode('forgot-sent');
+  };
+
   return (
-    <div className="modal-overlay">
-      <div className="clean-card" style={{ maxWidth: '460px', width: '100%', padding: '2.25rem', position: 'relative' }}>
+    <div className="modal-overlay" style={{ zIndex: 1100 }}>
+      <div className="clean-card" style={{ maxWidth: '460px', width: '100%', padding: '2.25rem', position: 'relative', margin: '1rem' }}>
         <button 
           onClick={onClose}
-          style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+          aria-label="閉じる"
+          style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
         >
           <X size={20} />
         </button>
 
-        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+        {/* ヘッダー */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <div style={{
             width: '48px',
             height: '48px',
-            background: '#f1f5f9',
+            background: '#e0e7ff',
+            color: '#4f46e5',
             borderRadius: '12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 0.75rem auto',
-            color: '#0f172a'
+            margin: '0 auto 0.75rem auto'
           }}>
             <ShieldCheck size={24} />
           </div>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '800' }}>
-            {mode === 'login' && 'クリエイターログイン'}
+          <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0f172a' }}>
+            {mode === 'login' && 'アカウントログイン'}
             {mode === 'register' && '新規アカウント登録'}
-            {mode === 'verify' && '2段階メール検証コード入力'}
+            {mode === 'email-sent' && '認証メールを確認してください'}
+            {mode === 'forgot' && 'パスワードの再設定'}
+            {mode === 'forgot-sent' && '再設定メールを送信しました'}
           </h2>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {mode === 'login' && 'Comisia の創作活動・依頼受付をはじめましょう'}
+            {mode === 'register' && 'イラストの受託や作品販売をすぐにスタートできます'}
+          </p>
         </div>
 
         {errors.global && (
-          <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <AlertTriangle size={16} /> {errors.global}
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '0.75rem', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} /> <span>{errors.global}</span>
           </div>
         )}
 
-        {/* ログイン */}
+        {/* Google OAuth ボタン（ログイン・新規登録画面で共通表示） */}
+        {(mode === 'login' || mode === 'register') && (
+          <>
+            <button
+              type="button"
+              onClick={handleGoogleAuth}
+              disabled={submitting}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.75rem',
+                padding: '0.75rem 1rem',
+                borderRadius: 'var(--radius-full)',
+                border: '1px solid #cbd5e1',
+                background: '#ffffff',
+                color: '#1e293b',
+                fontWeight: '600',
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+            >
+              {/* Official Google G Logo SVG */}
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>{mode === 'login' ? 'Google でログイン' : 'Google で新規登録'}</span>
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0', color: 'var(--text-light)', fontSize: '0.8rem' }}>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+              <span style={{ padding: '0 0.75rem' }}>またはメールアドレスで</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--border-color)' }}></div>
+            </div>
+          </>
+        )}
+
+        {/* ログインフォーム */}
         {mode === 'login' && (
           <form onSubmit={handleLoginSubmit}>
-            <div className="form-group">
-              <label>メールアドレス</label>
-              <input 
-                type="email" className="form-input"
-                value={form.email}
-                onChange={(e) => setForm({...form, email: e.target.value})}
-                placeholder="example@domain.com"
-              />
-              {errors.email && <div className="form-error">{errors.email}</div>}
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>メールアドレス</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="email" className="form-input"
+                  value={form.email}
+                  onChange={(e) => setForm({...form, email: e.target.value})}
+                  placeholder="example@domain.com"
+                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                />
+                <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              </div>
+              {errors.email && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.email}</div>}
             </div>
 
-            <div className="form-group">
-              <label>パスワード</label>
-              <input 
-                type="password" className="form-input"
-                value={form.password}
-                onChange={(e) => setForm({...form, password: e.target.value})}
-                placeholder="••••••••"
-              />
-              {errors.password && <div className="form-error">{errors.password}</div>}
+            <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: '600' }}>パスワード</label>
+                <button
+                  type="button"
+                  onClick={() => setMode('forgot')}
+                  style={{ background: 'none', border: 'none', color: '#6495ed', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  パスワードをお忘れですか？
+                </button>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="password" className="form-input"
+                  value={form.password}
+                  onChange={(e) => setForm({...form, password: e.target.value})}
+                  placeholder="••••••••"
+                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                />
+                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              </div>
+              {errors.password && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.password}</div>}
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', marginTop: '1rem', padding: '0.85rem' }}>
-              {submitting ? 'ログイン照合中...' : <><Lock size={16} /> ログイン</>}
+            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', marginTop: '1rem', padding: '0.8rem' }}>
+              {submitting ? '照合中...' : <><Lock size={16} /> ログイン</>}
             </button>
           </form>
         )}
 
-        {/* 新規登録 (ステップ1) */}
+        {/* 新規登録フォーム */}
         {mode === 'register' && (
           <form onSubmit={handleRegisterSubmit}>
-            <div className="form-group">
-              <label>お名前 / 表示名 *</label>
-              <input 
-                type="text" className="form-input"
-                value={form.name}
-                onChange={(e) => setForm({...form, name: e.target.value})}
-                placeholder="例: 山田 イラスト"
-              />
-              {errors.name && <div className="form-error">{errors.name}</div>}
-            </div>
-
-            <div className="form-group">
-              <label>メールアドレス *</label>
-              <input 
-                type="email" className="form-input"
-                value={form.email}
-                onChange={(e) => setForm({...form, email: e.target.value})}
-                placeholder="example@domain.com"
-              />
-              {errors.email && <div className="form-error">{errors.email}</div>}
-            </div>
-
-            <div className="form-group">
-              <label>パスワード設定 *</label>
-              <input 
-                type="password" className="form-input"
-                value={form.password}
-                onChange={(e) => setForm({...form, password: e.target.value})}
-                placeholder="8文字以上 (英数・記号)"
-              />
-              <div style={{ fontSize: '0.8rem', color: passwordStrength.color, marginTop: '4px', fontWeight: '600' }}>
-                パスワード強度: {passwordStrength.label}
+            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>お名前 / 表示名 *</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="text" className="form-input"
+                  value={form.name}
+                  onChange={(e) => setForm({...form, name: e.target.value})}
+                  placeholder="例: 山田 イラスト"
+                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                />
+                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
               </div>
-              {errors.password && <div className="form-error">{errors.password}</div>}
+              {errors.name && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.name}</div>}
             </div>
 
-            <div className="form-group">
-              <label>パスワード確認（再入力） *</label>
-              <input 
-                type="password" className="form-input"
-                value={form.confirmPassword}
-                onChange={(e) => setForm({...form, confirmPassword: e.target.value})}
-                placeholder="パスワードを再入力"
-              />
-              {errors.confirmPassword && <div className="form-error">{errors.confirmPassword}</div>}
+            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>メールアドレス *</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="email" className="form-input"
+                  value={form.email}
+                  onChange={(e) => setForm({...form, email: e.target.value})}
+                  placeholder="example@domain.com"
+                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                />
+                <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              </div>
+              {errors.email && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.email}</div>}
             </div>
 
-            <div style={{ margin: '1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>パスワード設定 *</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="password" className="form-input"
+                  value={form.password}
+                  onChange={(e) => setForm({...form, password: e.target.value})}
+                  placeholder="8文字以上 (英数・記号)"
+                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                />
+                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              </div>
+
+              {/* パスワード強度メーター */}
+              {form.password.length > 0 && (
+                <div style={{ marginTop: '6px' }}>
+                  <div style={{ display: 'flex', height: '4px', background: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${(passwordStrength.score + 1) * 20}%`,
+                      background: passwordStrength.color,
+                      transition: 'all 0.3s ease'
+                    }}></div>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: passwordStrength.color, marginTop: '4px', fontWeight: '600' }}>
+                    {passwordStrength.label}
+                  </div>
+                </div>
+              )}
+              {errors.password && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.password}</div>}
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>パスワード確認（再入力） *</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="password" className="form-input"
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({...form, confirmPassword: e.target.value})}
+                  placeholder="パスワードを再入力"
+                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                />
+                <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              </div>
+              {errors.confirmPassword && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.confirmPassword}</div>}
+            </div>
+
+            <div style={{ margin: '1rem 0', display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               <input 
                 type="checkbox" id="terms"
                 checked={form.agreeTerms}
                 onChange={(e) => setForm({...form, agreeTerms: e.target.checked})}
+                style={{ marginTop: '3px' }}
               />
-              <label htmlFor="terms">利用規約およびプライバシーポリシーに同意する *</label>
+              <label htmlFor="terms" style={{ cursor: 'pointer' }}>
+                利用規約およびプライバシーポリシーに同意する *
+              </label>
             </div>
-            {errors.agreeTerms && <div className="form-error">{errors.agreeTerms}</div>}
+            {errors.agreeTerms && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginBottom: '0.5rem' }}>{errors.agreeTerms}</div>}
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', padding: '0.85rem' }}>
-              次へ: メール検証コード入力 <ArrowRight size={16} />
+            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', marginTop: '0.5rem', padding: '0.8rem' }}>
+              {submitting ? 'アカウント作成中...' : <><ArrowRight size={16} /> 認証メールを送信して登録</>}
             </button>
           </form>
         )}
 
-        {/* 2段階コード確認 (ステップ2) */}
-        {mode === 'verify' && (
-          <form onSubmit={handleVerifySubmit}>
-            <div style={{ background: '#f1f5f9', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1.25rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>📧 発行された検証コード (デモ表示)</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: '800', letterSpacing: '4px', color: '#0f172a' }}>{verificationCode}</div>
+        {/* 認証メール送信完了画面 */}
+        {mode === 'email-sent' && (
+          <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              background: '#dcfce7',
+              color: '#16a34a',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.25rem auto'
+            }}>
+              <Mail size={32} />
             </div>
 
-            <div className="form-group">
-              <label>6桁の検証コードを入力 *</label>
-              <input 
-                type="text" className="form-input" maxLength="6"
-                value={inputCode}
-                onChange={(e) => setInputCode(e.target.value)}
-                placeholder="123456"
-                style={{ textAlign: 'center', fontSize: '1.3rem', letterSpacing: '4px', fontWeight: '700' }}
-              />
-              {errors.code && <div className="form-error">{errors.code}</div>}
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '0.5rem' }}>確認メールを送信しました</h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '1.25rem' }}>
+              <strong style={{ color: '#0f172a' }}>{registeredEmail}</strong> 宛に認証メールをお送りしました。<br />
+              メール本文に記載されている<strong>「メールアドレスを確認する」</strong>リンクをクリックして本登録を完了してください。
+            </p>
+
+            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem', textAlign: 'left' }}>
+              💡 メールが届かない場合：<br />
+              ・迷惑メールフォルダをご確認ください。<br />
+              ・メールアドレスに間違いがないかご確認ください。
             </div>
 
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', marginTop: '1rem', padding: '0.85rem' }}>
-              {submitting ? '登録処理中...' : <><CheckCircle2 size={16} /> 本人検証を完了して本登録</>}
+            <button 
+              type="button" 
+              onClick={handleResendEmail}
+              disabled={resendCooldown > 0}
+              className="btn" 
+              style={{ width: '100%', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', padding: '0.75rem' }}
+            >
+              <RefreshCw size={16} className={resendCooldown > 0 ? 'spin' : ''} />
+              {resendCooldown > 0 ? `再送信まで ${resendCooldown} 秒` : '認証メールを再送信する'}
             </button>
+
+            <div style={{ marginTop: '1.25rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setMode('login')} 
+                style={{ background: 'none', border: 'none', color: '#6495ed', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                ログイン画面へ戻る
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* パスワード再設定フォーム */}
+        {mode === 'forgot' && (
+          <form onSubmit={handleForgotSubmit}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              ご登録のメールアドレスを入力してください。パスワード再設定用の案内リンクをお送りします。
+            </p>
+
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>メールアドレス</label>
+              <div style={{ position: 'relative' }}>
+                <input 
+                  type="email" className="form-input"
+                  value={form.email}
+                  onChange={(e) => setForm({...form, email: e.target.value})}
+                  placeholder="example@domain.com"
+                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                />
+                <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+              </div>
+              {errors.email && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.email}</div>}
+            </div>
+
+            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', padding: '0.8rem' }}>
+              {submitting ? '送信中...' : <><KeyRound size={16} /> 再設定リンクを送信</>}
+            </button>
+
+            <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setMode('login')} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                ログイン画面に戻る
+              </button>
+            </div>
           </form>
         )}
 
-        {/* 切替 */}
-        <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          {mode === 'login' ? (
-            <span>アカウントをお持ちでないですか？ <a href="#r" onClick={() => setMode('register')} style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>新規登録</a></span>
-          ) : (
-            <span>すでにアカウントをお持ちですか？ <a href="#l" onClick={() => setMode('login')} style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>ログイン</a></span>
-          )}
-        </div>
+        {/* パスワード再設定メール送信完了 */}
+        {mode === 'forgot-sent' && (
+          <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              background: '#e0e7ff',
+              color: '#4f46e5',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.25rem auto'
+            }}>
+              <CheckCircle2 size={32} />
+            </div>
+
+            <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '0.5rem' }}>案内メールを送信しました</h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+              <strong style={{ color: '#0f172a' }}>{registeredEmail}</strong> 宛にパスワード再設定用のリンクをお送りしました。メールをご確認ください。
+            </p>
+
+            <button 
+              type="button" 
+              onClick={() => setMode('login')} 
+              className="btn btn-primary" 
+              style={{ width: '100%', padding: '0.8rem' }}
+            >
+              ログイン画面へ戻る
+            </button>
+          </div>
+        )}
+
+        {/* モード切り替えフッター */}
+        {(mode === 'login' || mode === 'register') && (
+          <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            {mode === 'login' ? (
+              <span>アカウントをお持ちでないですか？ <button type="button" onClick={() => { setMode('register'); setErrors({}); }} style={{ background: 'none', border: 'none', color: '#6495ed', fontWeight: '700', cursor: 'pointer', padding: 0 }}>新規登録</button></span>
+            ) : (
+              <span>すでにアカウントをお持ちですか？ <button type="button" onClick={() => { setMode('login'); setErrors({}); }} style={{ background: 'none', border: 'none', color: '#6495ed', fontWeight: '700', cursor: 'pointer', padding: 0 }}>ログイン</button></span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

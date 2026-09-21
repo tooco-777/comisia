@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
 import { sanitizeText, validateEmail } from '../utils/security';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { sendInquiryAutoReply } from '../utils/emailService';
 
 export default function ContactForm({ onSuccess }) {
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,6 +22,8 @@ export default function ContactForm({ onSuccess }) {
       setErrors(errs);
       return;
     }
+
+    setSubmitting(true);
 
     if (isSupabaseConfigured && supabase) {
       try {
@@ -38,6 +42,15 @@ export default function ContactForm({ onSuccess }) {
       }
     }
 
+    // 自動返信メールの送信
+    await sendInquiryAutoReply({
+      name: formData.name,
+      email: formData.email,
+      subject: formData.subject,
+      message: formData.message
+    });
+
+    setSubmitting(false);
     setSubmitted(true);
     if (onSuccess) onSuccess('お問い合わせを送信しました。');
   };
@@ -84,8 +97,8 @@ export default function ContactForm({ onSuccess }) {
           {errors.message && <div className="form-error">{errors.message}</div>}
         </div>
 
-        <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', padding: '0.85rem' }}>
-          <Send size={16} /> 送信する
+        <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', marginTop: '1rem', padding: '0.85rem' }}>
+          {submitting ? '送信中...' : <><Send size={16} /> 送信する</>}
         </button>
       </form>
     </div>
