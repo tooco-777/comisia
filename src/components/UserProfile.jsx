@@ -11,7 +11,7 @@ export default function UserProfile({ profile, adopts, currentUser, onEditClick,
 
   const user = profile || {
     name: 'イラストレーター / デザイナー',
-    bio: 'キャラクターイラスト・Vtuber立ち絵・アドプトモデル制作を受け付けています。お気軽にご相談ください！',
+    bio: '',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
     banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
     snsLinks: {
@@ -88,22 +88,63 @@ export default function UserProfile({ profile, adopts, currentUser, onEditClick,
             {user.bio}
           </p>
 
-          {/* SNSリンク集 */}
+          {/* SNS / Webサイト リンク集 */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            {user.snsLinks?.x && (
-              <a href={user.snsLinks.x} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}>
-                𝕏 (Twitter) <ExternalLink size={14} />
-              </a>
-            )}
-            {user.snsLinks?.pixiv && (
-              <a href={user.snsLinks.pixiv} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}>
-                Pixiv Portfolio <ExternalLink size={14} />
-              </a>
-            )}
-            {user.snsLinks?.instagram && (
-              <a href={user.snsLinks.instagram} target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}>
-                Instagram <ExternalLink size={14} />
-              </a>
+            {Array.isArray(user.websiteLinks) && user.websiteLinks.length > 0 ? (
+              user.websiteLinks.map((item, i) => {
+                if (!item.url && !item.label) return null;
+                const href = item.url ? (item.url.startsWith('http') ? item.url : `https://${item.url}`) : '#';
+                return (
+                  <a 
+                    key={i}
+                    href={href} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="btn btn-secondary" 
+                    style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}
+                  >
+                    {item.label || item.url} <ExternalLink size={14} />
+                  </a>
+                );
+              })
+            ) : (
+              <>
+                {user.snsIds?.x && (
+                  <a 
+                    href={user.snsIds.x.startsWith('http') ? user.snsIds.x : `https://x.com/${user.snsIds.x.replace(/^@/, '')}`} 
+                    target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}
+                  >
+                    𝕏 (@{user.snsIds.x.replace(/^@/, '')}) <ExternalLink size={14} />
+                  </a>
+                )}
+                {user.snsIds?.instagram && (
+                  <a 
+                    href={user.snsIds.instagram.startsWith('http') ? user.snsIds.instagram : `https://instagram.com/${user.snsIds.instagram.replace(/^@/, '')}`} 
+                    target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}
+                  >
+                    Instagram <ExternalLink size={14} />
+                  </a>
+                )}
+                {user.snsIds?.youtube && (
+                  <a 
+                    href={user.snsIds.youtube.startsWith('http') ? user.snsIds.youtube : `https://youtube.com/${user.snsIds.youtube.startsWith('@') ? user.snsIds.youtube : '@' + user.snsIds.youtube}`} 
+                    target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}
+                  >
+                    YouTube <ExternalLink size={14} />
+                  </a>
+                )}
+                {Array.isArray(user.extraSns) && user.extraSns.map((item, i) => (
+                  item.label && item.id && (
+                    <a 
+                      key={i}
+                      href={item.id.startsWith('http') ? item.id : `https://${item.id}`} 
+                      target="_blank" rel="noopener noreferrer" className="btn btn-secondary" style={{ padding: '0.45rem 1.1rem', fontSize: '0.85rem' }}
+                    >
+                      {item.label} <ExternalLink size={14} />
+                    </a>
+                  )
+                ))}
+              </>
             )}
           </div>
 

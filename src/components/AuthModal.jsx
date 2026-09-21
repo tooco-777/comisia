@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Lock, Mail, User, ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, RefreshCw, KeyRound } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Lock, Mail, User, ShieldCheck, ArrowRight, CheckCircle2, AlertTriangle, RefreshCw, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { 
   checkPasswordStrength, 
   hashPassword, 
@@ -20,10 +20,29 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
     agreeTerms: false
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('comisia_remember_me') !== 'false';
+  });
+
   const [errors, setErrors] = useState({});
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // 初回表示時に自動保存されたログイン情報を復元
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('comisia_remember_email');
+    const savedPassword = localStorage.getItem('comisia_remember_password');
+    if (savedEmail) {
+      setForm(prev => ({
+        ...prev,
+        email: savedEmail,
+        password: savedPassword || prev.password
+      }));
+    }
+  }, []);
 
   const passwordStrength = checkPasswordStrength(form.password);
 
@@ -83,6 +102,17 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
 
     setSubmitting(true);
 
+    // 自動入力・記憶設定の保存/削除
+    if (rememberMe) {
+      localStorage.setItem('comisia_remember_email', form.email);
+      localStorage.setItem('comisia_remember_password', form.password);
+      localStorage.setItem('comisia_remember_me', 'true');
+    } else {
+      localStorage.removeItem('comisia_remember_email');
+      localStorage.removeItem('comisia_remember_password');
+      localStorage.setItem('comisia_remember_me', 'false');
+    }
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email: form.email,
@@ -136,7 +166,6 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
     setErrors({});
     const errs = {};
 
-    if (!form.name.trim()) errs.name = 'お名前 / 表示名を入力してください';
     if (!form.email.trim() || !validateEmail(form.email)) errs.email = '有効なメールアドレスを入力してください';
     if (!passwordStrength.isValid) {
       errs.password = 'パスワードは8文字以上で大・小文字・数字・記号を含めてください';
@@ -352,19 +381,48 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
               <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>パスワード</label>
               <div style={{ position: 'relative' }}>
                 <input 
-                  type="password" className="form-input"
+                  type={showPassword ? "text" : "password"} className="form-input"
                   value={form.password}
                   onChange={(e) => setForm({...form, password: e.target.value})}
                   placeholder="••••••••"
-                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                  style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                 />
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  aria-label={showPassword ? 'パスワードを非表示' : 'パスワードを表示'}
+                >
+                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
               </div>
-              <div style={{ textAlign: 'right', marginTop: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '0.8rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>次回から自動入力する</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => setMode('forgot')}
-                  style={{ background: 'none', border: 'none', color: '#6495ed', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                  style={{ background: 'none', border: 'none', color: '#6495ed', cursor: 'pointer', textDecoration: 'underline' }}
                 >
                   パスワードをお忘れですか？
                 </button>
@@ -381,21 +439,6 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
         {/* 新規登録フォーム */}
         {mode === 'register' && (
           <form onSubmit={handleRegisterSubmit}>
-            <div className="form-group" style={{ marginBottom: '0.85rem' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>お名前 / 表示名 *</label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  type="text" className="form-input"
-                  value={form.name}
-                  onChange={(e) => setForm({...form, name: e.target.value})}
-                  placeholder="例: 山田 イラスト"
-                  style={{ width: '100%', paddingLeft: '2.5rem' }}
-                />
-                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
-              </div>
-              {errors.name && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.name}</div>}
-            </div>
-
             <div className="form-group" style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>メールアドレス *</label>
               <div style={{ position: 'relative' }}>
@@ -415,13 +458,33 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
               <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>パスワード設定 *</label>
               <div style={{ position: 'relative' }}>
                 <input 
-                  type="password" className="form-input"
+                  type={showPassword ? "text" : "password"} className="form-input"
                   value={form.password}
                   onChange={(e) => setForm({...form, password: e.target.value})}
                   placeholder="8文字以上 (英数・記号)"
-                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                  style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                 />
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  aria-label={showPassword ? 'パスワードを非表示' : 'パスワードを表示'}
+                >
+                  {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
               </div>
 
               {/* パスワード強度メーター */}
@@ -446,13 +509,33 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
               <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>パスワード確認（再入力） *</label>
               <div style={{ position: 'relative' }}>
                 <input 
-                  type="password" className="form-input"
+                  type={showConfirmPassword ? "text" : "password"} className="form-input"
                   value={form.confirmPassword}
                   onChange={(e) => setForm({...form, confirmPassword: e.target.value})}
                   placeholder="パスワードを再入力"
-                  style={{ width: '100%', paddingLeft: '2.5rem' }}
+                  style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                 />
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  aria-label={showConfirmPassword ? 'パスワードを非表示' : 'パスワードを表示'}
+                >
+                  {showConfirmPassword ? <Eye size={18} /> : <EyeOff size={18} />}
+                </button>
               </div>
               {errors.confirmPassword && <div className="form-error" style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{errors.confirmPassword}</div>}
             </div>

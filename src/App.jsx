@@ -11,83 +11,97 @@ export default function App() {
   // 画面ルーティング状態: 'landing' (トップ) | 'publicPage' (公開ページ) | 'editor' (マイページ編集) | 'about' | 'faq' | 'developer' | 'terms' | 'contact'
   const [view, setView] = useState('landing');
   const [authMode, setAuthMode] = useState(null); // null | 'login' | 'register'
-  const [currentUser, setCurrentUser] = useState(null);
-  const [toastMessage, setToastMessage] = useState(null);
+  // アクティブハンドル状態 (localStorageから復元)
+  const [activeHandle, setActiveHandle] = useState(() => {
+    try {
+      return localStorage.getItem('v_art_active_handle') || 'default';
+    } catch (e) {
+      return 'default';
+    }
+  });
 
   // マルチクリエイターデータストア
   const [creators, setCreators] = useState(() => {
     try {
       const saved = localStorage.getItem('v_art_creators');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        Object.keys(parsed).forEach(k => {
+          parsed[k].bio = '';
+        });
+        return parsed;
+      }
     } catch (e) {}
 
     return {
       default: {
         handle: 'default',
         name: 'イラストスタジオ LUNA',
-        bio: 'キャラクターデザイン・Live2Dモデル・アドプトモデルの制作をしております。立ち絵のご相談やご依頼はお気軽にどうぞ！',
+        bio: '',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
         banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
-        snsLinks: {
-          x: 'https://twitter.com',
-          pixiv: 'https://pixiv.net',
-          instagram: 'https://instagram.com'
-        }
+        websiteLinks: [{ url: 'https://x.com', label: 'X' }]
       },
       astral: {
         handle: 'astral',
         name: 'アストラル工房',
-        bio: 'ファンタジー・魔法世界観のキャラクターイラスト専門のクリエイターです。商用利用・配信素材のご依頼も歓迎です。',
+        bio: '',
         avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80',
-        banner: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=300&auto=format&fit=crop&q=80',
-        snsLinks: {
-          x: 'https://twitter.com',
-          pixiv: 'https://pixiv.net'
-        }
+        banner: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop&q=80',
+        websiteLinks: [{ url: 'https://x.com', label: 'X' }]
       }
     };
   });
 
-  const [activeHandle, setActiveHandle] = useState('default');
+  // ログインユーザー状態 (localStorageおよびアクティブプロフィールから復元)
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('v_art_current_user');
+      if (savedUser) return JSON.parse(savedUser);
 
-  // アドプトモデルデータ
+      const savedCreators = localStorage.getItem('v_art_creators');
+      const handle = localStorage.getItem('v_art_active_handle') || 'default';
+      if (savedCreators) {
+        const parsed = JSON.parse(savedCreators);
+        const prof = parsed[handle] || parsed.default;
+        if (prof) {
+          return {
+            id: prof.id || 'default-user',
+            handle: prof.handle || handle,
+            name: prof.name || 'イラストスタジオ LUNA',
+            avatar: prof.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+            email: 'creator@example.com'
+          };
+        }
+      }
+    } catch (e) {}
+
+    return {
+      id: 'default-user',
+      handle: 'default',
+      name: 'イラストスタジオ LUNA',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+      email: 'creator@example.com'
+    };
+  });
+  const [toastMessage, setToastMessage] = useState(null);
+
+  // アドプトモデルデータ (デモデータは全て削除)
   const [adopts, setAdopts] = useState(() => {
     try {
       const saved = localStorage.getItem('v_art_adopts');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    return [
-      {
-        id: 'adopt-01',
-        name: 'サイバーポップ少女 - ルナ',
-        price: '￥38,000',
-        status: 'AVAILABLE',
-        category: '立ち絵モデル / 一点もの',
-        image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80',
-        tags: ['サイバー', '女の子', 'PSD付属', '商用可'],
-        description: 'サイバーテイストのオリジナル少女キャラクター。三面図、表情差分4種、レイヤー分けPSD・商用利用権込みの一点ものキャラクターです。'
-      },
-      {
-        id: 'adopt-02',
-        name: '星詠みの魔導士 - アストラ',
-        price: '￥45,000',
-        status: 'AVAILABLE',
-        category: 'ファンタジー / 魔法使',
-        image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
-        tags: ['ファンタジー', '星詠み', '魔法使い'],
-        description: '星と夜空をモチーフにした魔導士キャラクター。武器パーツ・魔法エフェクト差分が付属します。'
-      },
-      {
-        id: 'adopt-03',
-        name: '森の守護霊 - エルヴィン',
-        price: '￥32,000',
-        status: 'ADOPTED',
-        category: 'ケモミミ / 守護者',
-        image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
-        tags: ['ケモミミ', 'ご約定済み'],
-        description: '【ご成約済み】森の守護霊をイメージしたオリジナルデザイン。素敵なオーナー様に引き取られました。'
-      }
-    ];
+    return [];
+  });
+
+  // 料金表データ
+  const [priceList, setPriceList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('v_art_price_list');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
   });
 
   // Supabase セッション ＆ データ同期
@@ -170,6 +184,22 @@ export default function App() {
 
   useEffect(() => {
     try {
+      if (currentUser) {
+        localStorage.setItem('v_art_current_user', JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem('v_art_current_user');
+      }
+    } catch (e) {}
+  }, [currentUser]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('v_art_active_handle', activeHandle);
+    } catch (e) {}
+  }, [activeHandle]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem('v_art_adopts', JSON.stringify(adopts));
     } catch (e) {}
   }, [adopts]);
@@ -226,9 +256,12 @@ export default function App() {
                 ...prev,
                 [activeHandle]: { ...prev[activeHandle], ...newProf }
               }));
+              setCurrentUser(prev => ({
+                ...(prev || { id: 'default-user', handle: activeHandle, email: 'creator@example.com' }),
+                avatar: newProf.avatar || prev?.avatar,
+                name: newProf.name || prev?.name
+              }));
               showToast('プロフィールを保存しました');
-              setView('publicPage');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             adopts={adopts}
             onSaveAdopts={(newAdopts) => {
@@ -288,9 +321,17 @@ export default function App() {
             
             {/* ブランドロゴ ＆ 「スマートに」で改行された文章 */}
             <div>
-              <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#6495ed', marginBottom: '0.5rem' }}>
-                Comisia
-              </div>
+              <img 
+                src="/rogo.png" 
+                alt="Comisia" 
+                style={{ 
+                  height: '38px', 
+                  width: 'auto', 
+                  marginBottom: '0.6rem', 
+                  display: 'block',
+                  objectFit: 'contain' 
+                }} 
+              />
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.6', maxWidth: '300px' }}>
                 イラスト料金表とアドプト募集を<br />
                 スマートにまとめて公開できるサービス。
@@ -372,7 +413,7 @@ export default function App() {
                 [userData.handle]: {
                   handle: userData.handle,
                   name: userData.name,
-                  bio: '新規登録クリエイターです。立ち絵イラストやアドプト募集を行っています。',
+                  bio: '',
                   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
                   banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
                   snsLinks: { x: '', pixiv: '' }

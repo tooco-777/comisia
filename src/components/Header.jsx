@@ -1,7 +1,21 @@
-import React from 'react';
-import { LogIn, LogOut, Edit3 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { LogIn, Bell, Mail, ChevronDown, User, LogOut } from 'lucide-react';
 
 export default function Header({ currentView, setView, currentUser, onOpenAuth, onLogout }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // ドロップダウン外側クリックで閉じる処理
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header style={{
       position: 'sticky',
@@ -10,47 +24,224 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
       background: 'rgba(255, 255, 255, 0.95)',
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid var(--border-color)',
-      padding: '0.85rem 0'
+      padding: '0.75rem 0'
     }}>
-      <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ 
+        maxWidth: '1440px', 
+        width: '100%', 
+        margin: '0 auto', 
+        padding: '0 1rem', 
+        display: 'flex', 
+        justify: 'space-between', 
+        alignItems: 'center' 
+      }}>
         
-        {/* ロゴ (絵文字・アイコンなし、カッコなしテキスト「Comisia」) */}
+        {/* 左グループ (左詰め): 【サイトロゴ】のみ (サイトアイコンは削除) */}
         <div 
           onClick={() => setView('landing')} 
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          style={{ 
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center' 
+          }}
         >
-          <span style={{ fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.5px', color: '#6495ed' }}>
-            Comisia
-          </span>
+          {/* サイトロゴ (Comisia文字) */}
+          <img 
+            src="/rogo.png" 
+            alt="Comisia" 
+            style={{ 
+              height: '56px', 
+              width: 'auto',
+              objectFit: 'contain'
+            }} 
+          />
         </div>
 
-        {/* ナビゲーション */}
-        <nav style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        {/* 右グループ (右詰め): 【ベルマーク】 ＋ 【マイページ】 ＋ 【ユーザーアイコン・ユーザーネーム】 */}
+        <nav style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
           {currentUser ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <button 
-                className="btn btn-outline" 
-                style={{ padding: '0.45rem 0.85rem', fontSize: '0.8rem' }}
-                onClick={onLogout}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+              
+              {/* ベルマーク (通知) */}
+              <button
+                type="button"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '6px',
+                  borderRadius: '50%',
+                  transition: 'all 0.2s ease'
+                }}
+                title="通知"
+                onMouseEnter={(e) => e.currentTarget.style.color = '#0f172a'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#475569'}
               >
-                <LogOut size={14} /> ログアウト
+                <Bell size={22} />
               </button>
+
+              {/* ユーザーネーム (クリックでマイページ移動) */}
+              <button
+                type="button"
+                onClick={() => setView('editor')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  fontWeight: '700',
+                  padding: '4px 6px',
+                  borderRadius: '6px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = '#0f172a'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#475569'}
+              >
+                {currentUser.name || currentUser.handle || 'ユーザー'}
+              </button>
+
+              {/* ユーザーアイコン ＆ プルダウン */}
+              <div ref={dropdownRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  style={{
+                    background: dropdownOpen ? '#f1f5f9' : 'none',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    cursor: 'pointer',
+                    padding: '4px 6px',
+                    borderRadius: '9999px',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                  onMouseLeave={(e) => {
+                    if (!dropdownOpen) e.currentTarget.style.background = 'none';
+                  }}
+                >
+                  <img
+                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+                    alt={currentUser.name || 'ユーザー'}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '1.5px solid #cbd5e1'
+                    }}
+                  />
+                  <ChevronDown 
+                    size={16} 
+                    color="#64748b" 
+                    style={{ 
+                      transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', 
+                      transition: 'transform 0.2s ease' 
+                    }} 
+                  />
+                </button>
+
+                {/* プルダウンメニュー */}
+                {dropdownOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 'calc(100% + 8px)',
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                    padding: '0.5rem',
+                    minWidth: '160px',
+                    zIndex: 200,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView('editor');
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        width: '100%',
+                        padding: '0.6rem 0.85rem',
+                        border: 'none',
+                        background: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#0f172a',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <User size={16} color="#3b82f6" />
+                      マイページ
+                    </button>
+
+                    <div style={{ height: '1px', background: '#f1f5f9', margin: '2px 0' }}></div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLogout();
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        width: '100%',
+                        padding: '0.6rem 0.85rem',
+                        border: 'none',
+                        background: 'none',
+                        borderRadius: '8px',
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                    >
+                      <LogOut size={16} color="#ef4444" />
+                      ログアウト
+                    </button>
+                  </div>
+                )}
+              </div>
+
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                className="btn btn-primary" 
-                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
-                onClick={() => onOpenAuth('register')}
-              >
-                新規登録
-              </button>
               <button 
                 className="btn btn-secondary" 
                 style={{ padding: '0.45rem 0.9rem', fontSize: '0.85rem' }}
                 onClick={() => onOpenAuth('login')}
               >
                 <LogIn size={15} /> ログイン
+              </button>
+              <button 
+                className="btn btn-primary" 
+                style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }}
+                onClick={() => onOpenAuth('register')}
+              >
+                新規登録
               </button>
             </div>
           )}
@@ -60,3 +251,4 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
     </header>
   );
 }
+
