@@ -7,6 +7,7 @@ import UserProfile from './components/UserProfile';
 import PageViewer from './components/PageViewer';
 import DeleteAccountPage from './components/DeleteAccountPage';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
+import { DEFAULT_AVATAR, DEFAULT_BANNER } from './constants/defaults';
 
 export default function App() {
   // 画面ルーティング状態: 'landing' (トップ) | 'publicPage' (公開ページ) | 'editor' (マイページ編集) | 'about' | 'faq' | 'developer' | 'terms' | 'contact' | 'delete-account'
@@ -35,16 +36,16 @@ export default function App() {
         handle: 'default',
         name: 'イラストスタジオ LUNA',
         bio: '',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-        banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+        avatar: DEFAULT_AVATAR,
+        banner: DEFAULT_BANNER,
         websiteLinks: [{ url: 'https://x.com', label: 'X' }]
       },
       astral: {
         handle: 'astral',
         name: 'アストラル工房',
         bio: '',
-        avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&auto=format&fit=crop&q=80',
-        banner: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1200&auto=format&fit=crop&q=80',
+        avatar: DEFAULT_AVATAR,
+        banner: DEFAULT_BANNER,
         websiteLinks: [{ url: 'https://x.com', label: 'X' }]
       }
     };
@@ -110,7 +111,7 @@ export default function App() {
       const savedAvatar = savedCreator.avatar || (savedCurrentUser?.handle === handle ? savedCurrentUser.avatar : null);
 
       const unifiedName = savedName || userMeta.name || handle;
-      const unifiedAvatar = savedAvatar || userMeta.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+      const unifiedAvatar = savedAvatar || userMeta.avatar || DEFAULT_AVATAR;
 
       setCurrentUser({
         id: sessionUser.id,
@@ -344,8 +345,8 @@ export default function App() {
                     handle: data.handle,
                     name: data.name,
                     bio: data.bio || '',
-                    avatar: data.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-                    banner: data.banner_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+                    avatar: data.avatar_url || DEFAULT_AVATAR,
+                    banner: data.banner_url || DEFAULT_BANNER,
                     snsLinks: data.sns_links || {}
                   }
                 }));
@@ -645,7 +646,7 @@ export default function App() {
           onLoginSuccess={(userData) => {
             const handleKey = userData.handle;
             let savedName = userData.name;
-            let savedAvatar = userData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+            let savedAvatar = userData.avatar || DEFAULT_AVATAR;
 
             if (!userData.isNewRegistration) {
               const existing = creators[handleKey];
@@ -668,7 +669,7 @@ export default function App() {
               // 新規登録 (または退会済みアカウントでの再登録) の場合:
               // 古いキャッシュを完全に消去し、デフォルト初期値へ完全リセット
               savedName = userData.name;
-              savedAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+              savedAvatar = DEFAULT_AVATAR;
               try {
                 const saved = localStorage.getItem('v_art_creators');
                 if (saved) {
@@ -696,7 +697,7 @@ export default function App() {
                   name: finalUserData.name,
                   bio: '',
                   avatar: finalUserData.avatar,
-                  banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+                  banner: DEFAULT_BANNER,
                   websiteLinks: [{ url: 'https://x.com', label: 'X' }]
                 }
               }));

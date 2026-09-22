@@ -113,8 +113,8 @@ BEGIN
     COALESCE(new.raw_user_meta_data->>'handle', split_part(new.email, '@', 1)),
     COALESCE(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
     '',
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80'
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><circle cx="128" cy="128" r="128" fill="%23E5E7EB"/><circle cx="128" cy="96" r="48" fill="%239CA3AF"/><path d="M128 160c-48 0-88 30-94 70a128 128 0 0 0 188 0c-6-40-46-70-94-70z" fill="%239CA3AF"/></svg>',
+    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300"><rect width="1200" height="300" fill="%23E5E7EB"/><rect width="1200" height="300" fill="url(%23gray-gradient)"/><defs><linearGradient id="gray-gradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23D1D5DB"/><stop offset="50%" stop-color="%23E5E7EB"/><stop offset="100%" stop-color="%239CA3AF"/></linearGradient></defs></svg>'
   )
   ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,

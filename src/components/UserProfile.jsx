@@ -4,6 +4,7 @@ import PriceCalculator from './PriceCalculator';
 import CommissionForm from './CommissionForm';
 import AdoptSection from './AdoptSection';
 import ContactForm from './ContactForm';
+import { DEFAULT_AVATAR, DEFAULT_BANNER } from '../constants/defaults';
 
 export default function UserProfile({ profile, adopts, currentUser, onEditClick, onAdoptRequest, showToast }) {
   const [activeTab, setActiveTab] = useState('all'); // all, prices, order, adopt, contact
@@ -12,8 +13,8 @@ export default function UserProfile({ profile, adopts, currentUser, onEditClick,
   const user = profile || {
     name: 'イラストレーター / デザイナー',
     bio: '',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-    banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+    avatar: DEFAULT_AVATAR,
+    banner: DEFAULT_BANNER,
     snsLinks: {
       x: 'https://twitter.com',
       pixiv: 'https://pixiv.net',

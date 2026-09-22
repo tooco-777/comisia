@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Heart, Eye, X, Check, ShoppingBag, ShieldCheck } from 'lucide-react';
 import { sanitizeText, validateEmail } from '../utils/security';
+import { DEFAULT_BANNER } from '../constants/defaults';
 
 export default function AdoptSection({ adoptList, currentUser, onAdoptRequest }) {
   const [selectedAdopt, setSelectedAdopt] = useState(null);
@@ -37,7 +38,7 @@ export default function AdoptSection({ adoptList, currentUser, onAdoptRequest })
       price: '￥32,000',
       status: 'ADOPTED',
       category: 'ケモミミ / 守護者',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80',
+      image: DEFAULT_BANNER,
       tags: ['ケモミミ', 'ご約定済み'],
       description: '【ご成約済み】森の守護霊をイメージしたオリジナルデザイン。素敵なオーナー様に引き取られました。'
     }

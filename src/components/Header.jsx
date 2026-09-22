@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LogIn, Bell, Mail, ChevronDown, User, LogOut } from 'lucide-react';
+import { DEFAULT_AVATAR } from '../constants/defaults';
 
 export default function Header({ currentView, setView, currentUser, onOpenAuth, onLogout }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -126,7 +127,7 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
                   }}
                 >
                   <img
-                    src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+                    src={currentUser.avatar || DEFAULT_AVATAR}
                     alt={currentUser.name || 'ユーザー'}
                     style={{
                       width: '32px',

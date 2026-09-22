@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, ArrowLeft, ShieldAlert, LogIn, Trash2, CheckCircle2 } from 'lucide-react';
+import { DEFAULT_AVATAR } from '../constants/defaults';
 
 export default function DeleteAccountPage({ 
   currentUser, 
@@ -142,7 +143,7 @@ export default function DeleteAccountPage({
                 gap: '1rem'
               }}>
                 <img
-                  src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+                  src={currentUser.avatar || DEFAULT_AVATAR}
                   alt={currentUser.name}
                   style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid #cbd5e1' }}
                 />

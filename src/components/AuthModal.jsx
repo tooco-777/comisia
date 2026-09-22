@@ -8,6 +8,7 @@ import {
   recordFailedAttempt,
   resetFailedAttempts
 } from '../utils/security';
+import { DEFAULT_AVATAR } from '../constants/defaults';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 // Supabase認証エラーメッセージの日本語翻訳ヘルパー
@@ -254,7 +255,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
           id: data.user.id,
           handle: handleName,
           name: defaultName,
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+          avatar: DEFAULT_AVATAR,
           email: form.email,
           verified: true,
           isNewRegistration: true

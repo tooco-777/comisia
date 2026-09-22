@@ -1,5 +1,6 @@
 import React from 'react';
 import { Star, ChevronRight } from 'lucide-react';
+import { DEFAULT_AVATAR, DEFAULT_BANNER } from '../constants/defaults';
 
 export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, onSelectCreator }) {
 
@@ -9,7 +10,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'pop-1',
       title: '【受付中】SDミニキャラ・ちびキャラ制作',
       creatorName: 'イラストスタジオ LUNA',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (493)',
       price: '5,000円',
       image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80'
@@ -21,13 +22,13 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
       rating: '5 (345)',
       price: '3,500円',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'
+      image: DEFAULT_BANNER
     },
     {
       id: 'pop-3',
       title: 'キャラクターデザイン・三面図作成',
       creatorName: 'toooco777',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (348)',
       price: '12,000円',
       image: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&auto=format&fit=crop&q=80'
@@ -45,7 +46,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'pop-5',
       title: '【即納】表紙・挿絵一枚絵制作',
       creatorName: '星空イラスト',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (190)',
       price: '15,000円',
       image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=600&auto=format&fit=crop&q=80'
@@ -63,7 +64,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'pop-7',
       title: 'ドット絵アニメーション＆アイコン制作',
       creatorName: 'PixelArt Lab',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (155)',
       price: '4,000円',
       image: 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=600&auto=format&fit=crop&q=80'
@@ -81,7 +82,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'pop-9',
       title: '【期間限定】SNS用ミニイラストおためしプラン',
       creatorName: 'Sakura Art',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (310)',
       price: '2,500円',
       image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80'
@@ -93,7 +94,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
       rating: '5 (98)',
       price: '10,000円',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'
+      image: DEFAULT_BANNER
     }
   ];
 
@@ -111,7 +112,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'trend-2',
       title: '【Live2Dパーツ分け済】ゴシック系魔女モデル',
       creatorName: 'Studio Prism',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (89)',
       price: '45,000円',
       image: 'https://images.unsplash.com/photo-1600132806370-bf17e65e942f?w=600&auto=format&fit=crop&q=80'
@@ -129,7 +130,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'trend-4',
       title: '【立ち絵素材】近未来SFメカ少女モデル',
       creatorName: 'PixelArt Lab',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (175)',
       price: '22,000円',
       image: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&auto=format&fit=crop&q=80'
@@ -147,7 +148,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'trend-6',
       title: '【アドプト】ケモミミメイドさん立ち絵',
       creatorName: 'Sakura Art',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (140)',
       price: '18,000円',
       image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80'
@@ -159,13 +160,13 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
       rating: '5 (92)',
       price: '25,000円',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'
+      image: DEFAULT_BANNER
     },
     {
       id: 'trend-8',
       title: '【表情差分8種】サイバーアイドルモデル',
       creatorName: 'Couture Design',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (230)',
       price: '38,000円',
       image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80'
@@ -183,7 +184,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'trend-10',
       title: '【1点限定】竜人ハイブリッドキャラクター',
       creatorName: 'アストラル工房',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (115)',
       price: '42,000円',
       image: 'https://images.unsplash.com/photo-1600132806370-bf17e65e942f?w=600&auto=format&fit=crop&q=80'
@@ -195,7 +196,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'new-1',
       title: '【新作】クラシックメイドさんイラストモデル',
       creatorName: 'Sakura Art',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (150)',
       price: '15,000円',
       image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80'
@@ -207,13 +208,13 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
       rating: '5 (98)',
       price: '20,000円',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'
+      image: DEFAULT_BANNER
     },
     {
       id: 'new-3',
       title: '【新作素材】カジュアル私服系男子立ち絵',
       creatorName: '月影デザイン',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (210)',
       price: '12,000円',
       image: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&auto=format&fit=crop&q=80'
@@ -231,7 +232,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'new-5',
       title: '【限定公開】スチームパンク冒険者モデル',
       creatorName: 'Grimm Studio',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (132)',
       price: '28,000円',
       image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=600&auto=format&fit=crop&q=80'
@@ -249,7 +250,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'new-7',
       title: '【新着キャラ】ストリートファッションダンサー',
       creatorName: 'Couture Design',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (88)',
       price: '16,000円',
       image: 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=600&auto=format&fit=crop&q=80'
@@ -267,7 +268,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       id: 'new-9',
       title: '【新着モデル】マリン風水着少女立ち絵',
       creatorName: 'toooco777',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      avatar: DEFAULT_AVATAR,
       rating: '5 (140)',
       price: '18,000円',
       image: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80'
@@ -279,7 +280,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
       avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
       rating: '5 (310)',
       price: '35,000円',
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'
+      image: DEFAULT_BANNER
     }
   ];
 
@@ -340,7 +341,7 @@ export default function LandingPage({ creators = {}, adopts = [], onOpenAuth, on
                     alt={item.title}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => {
-                      e.currentTarget.src = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80';
+                      e.currentTarget.src = DEFAULT_BANNER;
                     }}
                   />
                 </div>

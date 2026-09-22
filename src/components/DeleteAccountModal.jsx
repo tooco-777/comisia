@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, X, ShieldAlert, CheckCircle2, LogIn, Trash2 } from 'lucide-react';
+import { DEFAULT_AVATAR } from '../constants/defaults';
 
 export default function DeleteAccountModal({ 
   currentUser, 
@@ -161,7 +162,7 @@ export default function DeleteAccountModal({
           gap: '0.75rem'
         }}>
           <img
-            src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+            src={currentUser.avatar || DEFAULT_AVATAR}
             alt={currentUser.name}
             style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
           />

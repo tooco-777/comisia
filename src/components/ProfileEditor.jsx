@@ -6,6 +6,7 @@ import {
 import { sanitizeText } from '../utils/security';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import ImageCropModal from './ImageCropModal';
+import { DEFAULT_AVATAR, DEFAULT_BANNER } from '../constants/defaults';
 
 export default function ProfileEditor({ 
   profile, 
@@ -36,8 +37,8 @@ export default function ProfileEditor({
   const [editedProfile, setEditedProfile] = useState({
     name: profile?.name || '',
     bio: profile?.bio || '',
-    avatar: profile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-    banner: profile?.banner || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+    avatar: profile?.avatar || DEFAULT_AVATAR,
+    banner: profile?.banner || DEFAULT_BANNER,
     websiteLinks: initialWebsiteLinks()
   });
 
@@ -47,8 +48,8 @@ export default function ProfileEditor({
       setEditedProfile({
         name: profile.name || '',
         bio: profile.bio || '',
-        avatar: profile.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-        banner: profile.banner || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+        avatar: profile.avatar || DEFAULT_AVATAR,
+        banner: profile.banner || DEFAULT_BANNER,
         websiteLinks: initialWebsiteLinks()
       });
     }
