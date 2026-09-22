@@ -302,6 +302,70 @@ export default function App() {
     } catch (e) {}
   }, [adopts]);
 
+  // ユーザー専用指定URL (/@handle) ＆ 独立ページURL (/faq, /about 等) の自動同期エフェクト
+  useEffect(() => {
+    let path = '/';
+    if (view === 'publicPage' && activeHandle) {
+      path = `/@${activeHandle}`;
+    } else if (['about', 'faq', 'developer', 'terms', 'contact', 'delete-account'].includes(view)) {
+      path = `/${view}`;
+    } else if (view === 'editor') {
+      path = '/editor';
+    }
+
+    if (window.location.hash.includes('access_token=') || window.location.search.includes('code=')) {
+      return;
+    }
+
+    if (decodeURIComponent(window.location.pathname) !== path) {
+      window.history.pushState({ view, activeHandle }, '', path);
+    }
+  }, [view, activeHandle]);
+
+  // URL直接アクセス (https://comisia.app/@tooco_777) ＆ ブラウザ「戻る/進む」同期
+  useEffect(() => {
+    const handleUrlRouting = async () => {
+      const pathname = decodeURIComponent(window.location.pathname);
+
+      if (pathname.startsWith('/@')) {
+        const handle = pathname.replace('/@', '').trim();
+        if (handle) {
+          setActiveHandle(handle);
+          setView('publicPage');
+
+          if (!creators[handle] && isSupabaseConfigured && supabase) {
+            try {
+              const { data } = await supabase.from('profiles').select('*').eq('handle', handle).maybeSingle();
+              if (data) {
+                setCreators(prev => ({
+                  ...prev,
+                  [handle]: {
+                    id: data.id,
+                    handle: data.handle,
+                    name: data.name,
+                    bio: data.bio || '',
+                    avatar: data.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+                    banner: data.banner_url || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+                    snsLinks: data.sns_links || {}
+                  }
+                }));
+              }
+            } catch (e) {}
+          }
+        }
+      } else if (['/about', '/faq', '/developer', '/terms', '/contact', '/delete-account', '/editor'].includes(pathname)) {
+        const pageKey = pathname.replace('/', '');
+        setView(pageKey);
+      } else if (pathname === '/' || pathname === '') {
+        setView('landing');
+      }
+    };
+
+    handleUrlRouting();
+    window.addEventListener('popstate', handleUrlRouting);
+    return () => window.removeEventListener('popstate', handleUrlRouting);
+  }, []);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
