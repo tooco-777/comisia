@@ -133,9 +133,17 @@ export default function App() {
       }));
     };
 
+    // OAuth / メール認証リダイレクトパラメータの検知
+    const isAuthRedirect = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         syncUserFromSession(session.user);
+        if (isAuthRedirect) {
+          setView('editor');
+          showToast('ログイン・認証が完了いたしました');
+          window.history.replaceState(null, '', window.location.pathname);
+        }
       } else {
         const savedUser = localStorage.getItem('v_art_current_user');
         if (!savedUser) {
@@ -147,6 +155,13 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         syncUserFromSession(session.user);
+        if (event === 'SIGNED_IN') {
+          setView('editor');
+          showToast(`ログイン完了: ようこそ ${session.user.user_metadata?.name || session.user.email.split('@')[0]} 様`);
+          if (window.location.hash.includes('access_token=') || window.location.search.includes('code=')) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }
       } else if (event === 'SIGNED_OUT' || !session) {
         setCurrentUser(null);
         localStorage.removeItem('v_art_current_user');
