@@ -133,6 +133,17 @@ export default function App() {
       }));
     };
 
+    // OAuth エラーパラメータの検知
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const authError = urlParams.get('error_description') || hashParams.get('error_description');
+
+    if (authError) {
+      console.error('OAuth Auth Error:', authError);
+      showToast(`Google認証エラー: Supabaseの設定をご確認ください (${decodeURIComponent(authError).replace(/\+/g, ' ')})`);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     // OAuth / メール認証リダイレクトパラメータの検知
     const isAuthRedirect = window.location.hash.includes('access_token=') || window.location.search.includes('code=');
 
