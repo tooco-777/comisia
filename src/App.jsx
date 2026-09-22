@@ -150,10 +150,11 @@ export default function App() {
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
+        setAuthMode(null);
         syncUserFromSession(session.user);
         if (isAuthRedirect) {
           setView('editor');
-          showToast('ログイン・認証が完了いたしました');
+          showToast('ログイン・メール認証が完了いたしました');
           window.history.replaceState(null, '', window.location.pathname);
         }
       } else {
@@ -166,8 +167,9 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
+        setAuthMode(null);
         syncUserFromSession(session.user);
-        if (event === 'SIGNED_IN') {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
           setView('editor');
           showToast(`ログイン完了: ようこそ ${session.user.user_metadata?.name || session.user.email.split('@')[0]} 様`);
           if (window.location.hash.includes('access_token=') || window.location.search.includes('code=')) {

@@ -73,6 +73,40 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
     }
   }, [mode]);
 
+  // メール認証完了の自動検出 (他タブやスマホでの認証完了を検知して自動でマイページへ遷移)
+  useEffect(() => {
+    if (mode !== 'email-sent') return;
+
+    let isMounted = true;
+    const checkAuthStatus = async () => {
+      if (isSupabaseConfigured && supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && (session.user.email_confirmed_at || session.user.confirmed_at)) {
+          if (!isMounted) return;
+          const handleName = session.user.user_metadata?.handle || registeredEmail.split('@')[0] || 'creator';
+          const defaultName = session.user.user_metadata?.name || handleName;
+          onLoginSuccess({
+            id: session.user.id,
+            handle: handleName,
+            name: defaultName,
+            avatar: session.user.user_metadata?.avatar || DEFAULT_AVATAR,
+            email: registeredEmail,
+            verified: true
+          });
+          onClose();
+        }
+      }
+    };
+
+    checkAuthStatus();
+    const interval = setInterval(checkAuthStatus, 2000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [mode, registeredEmail]);
+
   const passwordStrength = checkPasswordStrength(form.password);
 
   // Google OAuth 認証
@@ -644,10 +678,28 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
             </div>
 
             <h3 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '0.5rem' }}>確認メールを送信しました</h3>
-            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '1.25rem' }}>
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '1rem' }}>
               <strong style={{ color: '#0f172a' }}>{registeredEmail}</strong> 宛に認証メールをお送りしました。<br />
               メール本文に記載されている<strong>「メールアドレスを確認する」</strong>リンクをクリックして本登録を完了してください。
             </p>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              padding: '0.65rem 1rem',
+              borderRadius: '8px',
+              color: '#1d4ed8',
+              fontSize: '0.82rem',
+              fontWeight: '500',
+              marginBottom: '1.25rem'
+            }}>
+              <RefreshCw size={14} style={{ animation: 'spin 2s linear infinite' }} />
+              <span>認証リンクのクリックを待機中... (完了すると自動でマイページへ切り替わります)</span>
+            </div>
 
             <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', padding: '0.85rem', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.5rem', textAlign: 'left' }}>
               メールが届かない場合：<br />
