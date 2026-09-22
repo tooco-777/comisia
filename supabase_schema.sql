@@ -1,9 +1,12 @@
 -- ===================================================
--- Comisia (コミシア) Supabase 完全データベース初期化スクリプト
--- Supabase コンソールの「SQL Editor」でこのスクリプトを実行してください。
+-- Comisia (コミシア) Supabase 決定版 データベース初期化スクリプト
+-- Supabase コンソールの「SQL Editor」でこのスクリプトを一度だけ実行してください。
 -- ===================================================
 
--- 1. profiles テーブル（クリエイタープロフィール情報）
+-- 1. 既存の退会関数のクリーンアップ
+DROP FUNCTION IF EXISTS public.delete_user();
+
+-- 2. profiles テーブル（クリエイタープロフィール情報）
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   handle TEXT UNIQUE NOT NULL,
@@ -16,7 +19,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. adopts テーブル（アドプトモデル募集作品）
+-- 3. adopts テーブル（アドプトモデル募集作品）
 CREATE TABLE IF NOT EXISTS public.adopts (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   creator_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -30,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.adopts (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 3. commissions テーブル（通常依頼の受注・管理）
+-- 4. commissions テーブル（通常依頼の受注・管理）
 CREATE TABLE IF NOT EXISTS public.commissions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   creator_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -45,7 +48,7 @@ CREATE TABLE IF NOT EXISTS public.commissions (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. inquiries テーブル（Comisia 運営事務局宛てお問い合わせ）
+-- 5. inquiries テーブル（Comisia 運営事務局宛てお問い合わせ）
 CREATE TABLE IF NOT EXISTS public.inquiries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -65,38 +68,37 @@ ALTER TABLE public.commissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inquiries ENABLE ROW LEVEL SECURITY;
 
 -- profiles ポリシー
-CREATE POLICY "Public profiles are viewable by everyone" 
-  ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can delete their own profile" ON public.profiles;
 
-CREATE POLICY "Users can insert their own profile" 
-  ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
-
-CREATE POLICY "Users can update their own profile" 
-  ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can delete their own profile" ON public.profiles FOR DELETE USING (auth.uid() = id);
 
 -- adopts ポリシー
-CREATE POLICY "Adopts are viewable by everyone" 
-  ON public.adopts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Adopts are viewable by everyone" ON public.adopts;
+DROP POLICY IF EXISTS "Creators can insert their own adopts" ON public.adopts;
+DROP POLICY IF EXISTS "Creators can update their own adopts" ON public.adopts;
+DROP POLICY IF EXISTS "Creators can delete their own adopts" ON public.adopts;
 
-CREATE POLICY "Creators can insert their own adopts" 
-  ON public.adopts FOR INSERT WITH CHECK (auth.uid() = creator_id);
-
-CREATE POLICY "Creators can update their own adopts" 
-  ON public.adopts FOR UPDATE USING (auth.uid() = creator_id);
-
-CREATE POLICY "Creators can delete their own adopts" 
-  ON public.adopts FOR DELETE USING (auth.uid() = creator_id);
+CREATE POLICY "Adopts are viewable by everyone" ON public.adopts FOR SELECT USING (true);
+CREATE POLICY "Creators can insert their own adopts" ON public.adopts FOR INSERT WITH CHECK (auth.uid() = creator_id);
+CREATE POLICY "Creators can update their own adopts" ON public.adopts FOR UPDATE USING (auth.uid() = creator_id);
+CREATE POLICY "Creators can delete their own adopts" ON public.adopts FOR DELETE USING (auth.uid() = creator_id);
 
 -- commissions ポリシー
-CREATE POLICY "Anyone can submit a commission" 
-  ON public.commissions FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Anyone can submit a commission" ON public.commissions;
+DROP POLICY IF EXISTS "Creators can view their received commissions" ON public.commissions;
 
-CREATE POLICY "Creators can view their received commissions" 
-  ON public.commissions FOR SELECT USING (auth.uid() = creator_id);
+CREATE POLICY "Anyone can submit a commission" ON public.commissions FOR INSERT WITH CHECK (true);
+CREATE POLICY "Creators can view their received commissions" ON public.commissions FOR SELECT USING (auth.uid() = creator_id);
 
 -- inquiries ポリシー
-CREATE POLICY "Anyone can submit an inquiry" 
-  ON public.inquiries FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Anyone can submit an inquiry" ON public.inquiries;
+CREATE POLICY "Anyone can submit an inquiry" ON public.inquiries FOR INSERT WITH CHECK (true);
 
 -- ===================================================
 -- 新規ユーザー登録時の自動プロフィール作成トリガー
@@ -109,11 +111,14 @@ BEGIN
   VALUES (
     new.id,
     COALESCE(new.raw_user_meta_data->>'handle', split_part(new.email, '@', 1)),
-    COALESCE(new.raw_user_meta_data->>'name', '新規クリエイター'),
-    'Comisia へようこそ！キャラクターイラストやアドプトモデルの制作を受け付けています。',
+    COALESCE(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+    '',
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
     'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80'
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    avatar_url = EXCLUDED.avatar_url;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -122,3 +127,57 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ===================================================
+-- ユーザー完全物理削除関数 (delete_user)
+-- ===================================================
+
+-- 重複シグネチャによる曖昧さ回避のため、既存の全関数を消去
+DROP FUNCTION IF EXISTS public.delete_user();
+DROP FUNCTION IF EXISTS public.delete_user(UUID);
+DROP FUNCTION IF EXISTS public.delete_user_by_email(TEXT);
+
+-- 単一・全ユーザー共通の完全物理削除関数 (0引数)
+CREATE OR REPLACE FUNCTION public.delete_user()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth, storage
+AS $$
+DECLARE
+  v_uid UUID;
+BEGIN
+  -- ログイン中ユーザー (auth.uid()) を自動取得
+  v_uid := auth.uid();
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION '未ログイン状態のため削除できません。';
+  END IF;
+
+  -- 1. パブリックテーブルの関連データ削除
+  DELETE FROM public.adopts WHERE creator_id = v_uid;
+  DELETE FROM public.commissions WHERE creator_id = v_uid;
+  DELETE FROM public.profiles WHERE id = v_uid;
+
+  -- 2. Storage 関連データの削除
+  BEGIN
+    DELETE FROM storage.objects WHERE owner = v_uid;
+  EXCEPTION WHEN OTHERS THEN END;
+
+  -- 3. Supabase Auth サブテーブル・セッション・トークンの完全クリア
+  BEGIN DELETE FROM auth.mfa_amr_claims WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = v_uid); EXCEPTION WHEN OTHERS THEN END;
+  BEGIN DELETE FROM auth.mfa_challenges WHERE factor_id IN (SELECT id FROM auth.mfa_factors WHERE user_id = v_uid); EXCEPTION WHEN OTHERS THEN END;
+  BEGIN DELETE FROM auth.mfa_factors WHERE user_id = v_uid; EXCEPTION WHEN OTHERS THEN END;
+  BEGIN DELETE FROM auth.refresh_tokens WHERE session_id IN (SELECT id FROM auth.sessions WHERE user_id = v_uid); EXCEPTION WHEN OTHERS THEN END;
+  BEGIN DELETE FROM auth.sessions WHERE user_id = v_uid; EXCEPTION WHEN OTHERS THEN END;
+  BEGIN DELETE FROM auth.identities WHERE user_id = v_uid; EXCEPTION WHEN OTHERS THEN END;
+  BEGIN DELETE FROM auth.one_time_tokens WHERE user_id = v_uid; EXCEPTION WHEN OTHERS THEN END;
+
+  -- 4. auth.users 認証テーブル本体から完全物理削除
+  DELETE FROM auth.users WHERE id = v_uid;
+END;
+$$;
+
+-- 実行権限の付与
+GRANT EXECUTE ON FUNCTION public.delete_user() TO authenticated, anon, service_role;
+
+

@@ -10,6 +10,24 @@ import {
 } from '../utils/security';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
+// Supabase認証エラーメッセージの日本語翻訳ヘルパー
+const translateAuthError = (msg = '') => {
+  if (!msg) return 'エラーが発生しました。時間をおいて再試行してください。';
+  if (msg.includes('User already registered') || msg.includes('already registered')) {
+    return 'このメールアドレスは既に登録されています。';
+  }
+  if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
+    return 'ログイン失敗: メールアドレスまたはパスワードが正しくありません。';
+  }
+  if (msg.includes('Email not confirmed')) {
+    return 'メール認証が完了していません。届いた確認メールをご覧ください。';
+  }
+  if (msg.includes('Password should be at least')) {
+    return 'パスワードは8文字以上で設定してください。';
+  }
+  return `エラー: ${msg}`;
+};
+
 export default function AuthModal({ initialMode = 'login', onClose, onLoginSuccess }) {
   const [mode, setMode] = useState(initialMode); // 'login' | 'register' | 'email-sent' | 'forgot' | 'forgot-sent'
   const [form, setForm] = useState({
@@ -31,18 +49,28 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
   const [submitting, setSubmitting] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // 初回表示時に自動保存されたログイン情報を復元
+  // モード切替時にフォーム状態とエラーを適切にリセット
   useEffect(() => {
-    const savedEmail = localStorage.getItem('comisia_remember_email');
-    const savedPassword = localStorage.getItem('comisia_remember_password');
-    if (savedEmail) {
+    setErrors({});
+    if (mode === 'register') {
+      setForm({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        agreeTerms: false
+      });
+    } else if (mode === 'login') {
+      const savedEmail = localStorage.getItem('comisia_remember_email');
+      const savedPassword = localStorage.getItem('comisia_remember_password');
       setForm(prev => ({
         ...prev,
-        email: savedEmail,
-        password: savedPassword || prev.password
+        email: savedEmail || '',
+        password: savedPassword || '',
+        confirmPassword: ''
       }));
     }
-  }, []);
+  }, [mode]);
 
   const passwordStrength = checkPasswordStrength(form.password);
 
@@ -61,7 +89,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
 
       if (error) {
         setSubmitting(false);
-        setErrors({ global: `Google認証エラー: ${error.message}` });
+        setErrors({ global: `Google認証エラー: ${translateAuthError(error.message)}` });
       }
       return;
     }
@@ -122,21 +150,23 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
       if (error) {
         recordFailedAttempt(form.email);
         setSubmitting(false);
-        if (error.message.includes('Email not confirmed')) {
-          setErrors({ global: 'メール認証が完了していません。届いた認証メール内のリンクをクリックしてください。' });
-        } else {
-          setErrors({ global: `ログイン失敗: メールアドレスまたはパスワードが正しくありません。` });
-        }
+        setErrors({ global: translateAuthError(error.message) });
         return;
       }
 
       resetFailedAttempts(form.email);
       setSubmitting(false);
       const handleName = data.user?.user_metadata?.handle || form.email.split('@')[0];
+      
+      // プロフィール・アバター画像の復元参照
+      const userAvatar = data.user?.user_metadata?.avatar;
+      const userName = data.user?.user_metadata?.name;
+
       onLoginSuccess({
         id: data.user?.id,
         handle: handleName,
-        name: data.user?.user_metadata?.name || 'クリエイターユーザー',
+        name: userName || handleName,
+        avatar: userAvatar,
         email: data.user?.email,
         verified: true
       });
@@ -152,7 +182,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
       const handleName = form.email.split('@')[0] || 'creator';
       onLoginSuccess({
         handle: handleName,
-        name: form.name || 'クリエイターユーザー',
+        name: handleName,
         email: form.email,
         verified: true
       });
@@ -184,6 +214,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
 
     setSubmitting(true);
     const handleName = form.email.split('@')[0] || 'creator';
+    const defaultName = handleName;
 
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.auth.signUp({
@@ -191,7 +222,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
         password: form.password,
         options: {
           data: {
-            name: form.name,
+            name: defaultName,
             handle: handleName
           },
           emailRedirectTo: window.location.origin
@@ -200,7 +231,35 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
 
       if (error) {
         setSubmitting(false);
-        setErrors({ global: `新規登録エラー: ${error.message}` });
+        setErrors({ global: translateAuthError(error.message) });
+        return;
+      }
+
+      // 新規登録成功時: メール認証画面へ遷移（未検証状態でのマイページ遷移を防止）
+      if (data?.user) {
+        setSubmitting(false);
+
+        // Supabaseでメール認証が未完了（または自動ログインセッションが有効な場合もログアウト処理）
+        if (!data.session || !data.user.email_confirmed_at) {
+          if (data.session) {
+            await supabase.auth.signOut();
+          }
+          setRegisteredEmail(form.email);
+          setMode('email-sent');
+          return;
+        }
+
+        // メール認証が完了済みの場合のみログイン許可
+        onLoginSuccess({
+          id: data.user.id,
+          handle: handleName,
+          name: defaultName,
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+          email: form.email,
+          verified: true,
+          isNewRegistration: true
+        });
+        onClose();
         return;
       }
 
@@ -210,12 +269,17 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
       return;
     }
 
-    // デモ・未接続時の動作
+    // デモ・未接続時
     setTimeout(() => {
       setSubmitting(false);
-      setRegisteredEmail(form.email);
-      setMode('email-sent');
-    }, 700);
+      onLoginSuccess({
+        handle: handleName,
+        name: defaultName,
+        email: form.email,
+        verified: true
+      });
+      onClose();
+    }, 600);
   };
 
   // 認証メール再送信
@@ -438,7 +502,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
 
         {/* 新規登録フォーム */}
         {mode === 'register' && (
-          <form onSubmit={handleRegisterSubmit}>
+          <form onSubmit={handleRegisterSubmit} autoComplete="off">
             <div className="form-group" style={{ marginBottom: '0.85rem' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>メールアドレス *</label>
               <div style={{ position: 'relative' }}>
@@ -447,6 +511,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
                   value={form.email}
                   onChange={(e) => setForm({...form, email: e.target.value})}
                   placeholder="example@domain.com"
+                  autoComplete="off"
                   style={{ width: '100%', paddingLeft: '2.5rem' }}
                 />
                 <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
@@ -462,6 +527,7 @@ export default function AuthModal({ initialMode = 'login', onClose, onLoginSucce
                   value={form.password}
                   onChange={(e) => setForm({...form, password: e.target.value})}
                   placeholder="8文字以上 (英数・記号)"
+                  autoComplete="new-password"
                   style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
                 />
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />

@@ -5,10 +5,11 @@ import AuthModal from './components/AuthModal';
 import ProfileEditor from './components/ProfileEditor';
 import UserProfile from './components/UserProfile';
 import PageViewer from './components/PageViewer';
+import DeleteAccountPage from './components/DeleteAccountPage';
 import { supabase, isSupabaseConfigured } from './lib/supabaseClient';
 
 export default function App() {
-  // 画面ルーティング状態: 'landing' (トップ) | 'publicPage' (公開ページ) | 'editor' (マイページ編集) | 'about' | 'faq' | 'developer' | 'terms' | 'contact'
+  // 画面ルーティング状態: 'landing' (トップ) | 'publicPage' (公開ページ) | 'editor' (マイページ編集) | 'about' | 'faq' | 'developer' | 'terms' | 'contact' | 'delete-account'
   const [view, setView] = useState('landing');
   const [authMode, setAuthMode] = useState(null); // null | 'login' | 'register'
   // アクティブハンドル状態 (localStorageから復元)
@@ -25,11 +26,7 @@ export default function App() {
     try {
       const saved = localStorage.getItem('v_art_creators');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        Object.keys(parsed).forEach(k => {
-          parsed[k].bio = '';
-        });
-        return parsed;
+        return JSON.parse(saved);
       }
     } catch (e) {}
 
@@ -53,36 +50,17 @@ export default function App() {
     };
   });
 
-  // ログインユーザー状態 (localStorageおよびアクティブプロフィールから復元)
+  // ログインユーザー状態 (localStorageから復元。無い場合は未ログイン: null)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const savedUser = localStorage.getItem('v_art_current_user');
-      if (savedUser) return JSON.parse(savedUser);
-
-      const savedCreators = localStorage.getItem('v_art_creators');
-      const handle = localStorage.getItem('v_art_active_handle') || 'default';
-      if (savedCreators) {
-        const parsed = JSON.parse(savedCreators);
-        const prof = parsed[handle] || parsed.default;
-        if (prof) {
-          return {
-            id: prof.id || 'default-user',
-            handle: prof.handle || handle,
-            name: prof.name || 'イラストスタジオ LUNA',
-            avatar: prof.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-            email: 'creator@example.com'
-          };
-        }
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.id) return parsed;
       }
     } catch (e) {}
 
-    return {
-      id: 'default-user',
-      handle: 'default',
-      name: 'イラストスタジオ LUNA',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
-      email: 'creator@example.com'
-    };
+    return null; // 未ログイン状態
   });
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -108,50 +86,106 @@ export default function App() {
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
 
+    // Supabase セッション情報を反映するヘルパー (マイページ保存された名前・アバターを最優先)
+    const syncUserFromSession = async (sessionUser) => {
+      if (!sessionUser) return;
+
+      const userMeta = sessionUser.user_metadata || {};
+      const handle = userMeta.handle || sessionUser.email.split('@')[0];
+
+      let savedCreator = {};
+      try {
+        const saved = localStorage.getItem('v_art_creators');
+        if (saved) savedCreator = JSON.parse(saved)[handle] || {};
+      } catch (e) {}
+
+      let savedCurrentUser = null;
+      try {
+        const saved = localStorage.getItem('v_art_current_user');
+        if (saved) savedCurrentUser = JSON.parse(saved);
+      } catch (e) {}
+
+      // マイページで編集・保存された名前・アバターを最優先で維持する
+      const savedName = savedCreator.name || (savedCurrentUser?.handle === handle ? savedCurrentUser.name : null);
+      const savedAvatar = savedCreator.avatar || (savedCurrentUser?.handle === handle ? savedCurrentUser.avatar : null);
+
+      const unifiedName = savedName || userMeta.name || handle;
+      const unifiedAvatar = savedAvatar || userMeta.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+
+      setCurrentUser({
+        id: sessionUser.id,
+        handle,
+        name: unifiedName,
+        avatar: unifiedAvatar,
+        email: sessionUser.email,
+        verified: true
+      });
+
+      setCreators(prev => ({
+        ...prev,
+        [handle]: {
+          ...(prev[handle] || {}),
+          ...savedCreator,
+          name: unifiedName,
+          avatar: unifiedAvatar,
+          handle
+        }
+      }));
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const handle = session.user.user_metadata?.handle || session.user.email.split('@')[0];
-        setCurrentUser({
-          id: session.user.id,
-          handle,
-          name: session.user.user_metadata?.name || 'クリエイターユーザー',
-          email: session.user.email,
-          verified: true
-        });
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const handle = session.user.user_metadata?.handle || session.user.email.split('@')[0];
-        setCurrentUser({
-          id: session.user.id,
-          handle,
-          name: session.user.user_metadata?.name || 'クリエイターユーザー',
-          email: session.user.email,
-          verified: true
-        });
+        syncUserFromSession(session.user);
       } else {
-        setCurrentUser(null);
+        const savedUser = localStorage.getItem('v_art_current_user');
+        if (!savedUser) {
+          setCurrentUser(null);
+        }
       }
     });
 
-    // Supabaseからプロフィールの取得
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        syncUserFromSession(session.user);
+      } else if (event === 'SIGNED_OUT' || !session) {
+        setCurrentUser(null);
+        localStorage.removeItem('v_art_current_user');
+      }
+    });
+
+    // Supabaseからプロフィールの取得 ＆ 最新情報で更新
     supabase.from('profiles').select('*').then(({ data, error }) => {
       if (data && data.length > 0 && !error) {
-        const newCreators = { ...creators };
-        data.forEach(p => {
-          newCreators[p.handle] = {
-            id: p.id,
-            handle: p.handle,
-            name: p.name,
-            bio: p.bio,
-            avatar: p.avatar_url,
-            banner: p.banner_url,
-            snsLinks: p.sns_links || {}
-          };
+        setCreators(prev => {
+          const updated = { ...prev };
+          data.forEach(p => {
+            updated[p.handle] = {
+              ...(updated[p.handle] || {}),
+              id: p.id,
+              handle: p.handle,
+              name: p.name || updated[p.handle]?.name,
+              bio: p.bio !== undefined ? p.bio : updated[p.handle]?.bio,
+              avatar: p.avatar_url || p.avatar || updated[p.handle]?.avatar,
+              banner: p.banner_url || p.banner || updated[p.handle]?.banner,
+              snsLinks: p.sns_links || updated[p.handle]?.snsLinks || {}
+            };
+          });
+          return updated;
         });
-        setCreators(newCreators);
+
+        // ログイン中ユーザーのプロファイル・アバター・名前を最新同期
+        setCurrentUser(prev => {
+          if (!prev) return prev;
+          const myProf = data.find(p => p.id === prev.id || p.handle === prev.handle);
+          if (myProf) {
+            return {
+              ...prev,
+              name: myProf.name || prev.name,
+              avatar: myProf.avatar_url || prev.avatar
+            };
+          }
+          return prev;
+        });
       }
     });
 
@@ -174,6 +208,44 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // activeHandle を currentUser.handle に常時追従
+  useEffect(() => {
+    if (currentUser?.handle && activeHandle !== currentUser.handle) {
+      setActiveHandle(currentUser.handle);
+    }
+  }, [currentUser?.handle]);
+
+  // クリエイター名 ＝ ユーザーネーム の完全同一化・自動同期エフェクト（マイページ保存された名前を保護）
+  useEffect(() => {
+    if (!currentUser) return;
+    const handleKey = currentUser.handle || activeHandle;
+
+    setCreators(prev => {
+      const targetCreator = prev[handleKey] || prev[activeHandle] || prev.default;
+      if (!targetCreator) return prev;
+
+      // マイページで保存された targetCreator.name / avatar を優先
+      const unifiedName = targetCreator.name || currentUser.name || 'クリエイターユーザー';
+      const unifiedAvatar = targetCreator.avatar || currentUser.avatar;
+
+      if (targetCreator.name !== unifiedName || targetCreator.avatar !== unifiedAvatar || currentUser.name !== unifiedName || currentUser.avatar !== unifiedAvatar) {
+        if (currentUser.name !== unifiedName || currentUser.avatar !== unifiedAvatar) {
+          setCurrentUser(curr => curr ? { ...curr, name: unifiedName, avatar: unifiedAvatar } : null);
+        }
+        return {
+          ...prev,
+          [handleKey]: {
+            ...targetCreator,
+            name: unifiedName,
+            avatar: unifiedAvatar,
+            handle: handleKey
+          }
+        };
+      }
+      return prev;
+    });
+  }, [currentUser?.handle, activeHandle]);
 
   // ストレージ保存エフェクト
   useEffect(() => {
@@ -209,7 +281,52 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const currentCreator = creators[activeHandle] || creators.default;
+  // 退会処理 (Supabase auth.users およびデータベース・ローカルデータの完全物理消去)
+  const handleDeleteAccount = async () => {
+    if (isSupabaseConfigured && supabase && currentUser) {
+      // Supabase Postgres SECURITY DEFINER 関数 delete_user により、auth.users および全関連データを一括完全物理消去
+      const { error: rpcErr } = await supabase.rpc('delete_user');
+      if (rpcErr) {
+        console.error('RPC delete_user error:', rpcErr);
+        throw new Error(`Supabase退会処理エラー: ${rpcErr.message || '認証ユーザーの削除に失敗しました。'}`);
+      }
+
+      // Supabase Auth セッションのクリア・ログアウト
+      await supabase.auth.signOut();
+    }
+
+    // 3. ローカルストレージおよび React ステータスの完全物理消去
+    if (currentUser) {
+      const handleToRemove = currentUser.handle;
+      setCreators(prev => {
+        const updated = { ...prev };
+        delete updated[handleToRemove];
+        try {
+          localStorage.setItem('v_art_creators', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      try {
+        const saved = localStorage.getItem('v_art_creators');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          delete parsed[handleToRemove];
+          localStorage.setItem('v_art_creators', JSON.stringify(parsed));
+        }
+      } catch (e) {}
+    }
+
+    setCurrentUser(null);
+    localStorage.removeItem('v_art_current_user');
+    localStorage.removeItem('v_art_active_handle');
+    localStorage.removeItem('v_art_adopts');
+    localStorage.removeItem('v_art_price_list');
+    setView('landing');
+  };
+
+  const activeUserHandle = currentUser?.handle || activeHandle;
+  const currentCreator = creators[activeUserHandle] || creators[activeHandle] || creators.default;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -219,7 +336,7 @@ export default function App() {
         currentView={view} 
         setView={setView} 
         currentUser={currentUser}
-        activeHandle={activeHandle}
+        activeHandle={activeUserHandle}
         onOpenAuth={(mode) => setAuthMode(mode)}
         onLogout={async () => {
           if (isSupabaseConfigured && supabase) {
@@ -252,14 +369,19 @@ export default function App() {
           <ProfileEditor 
             profile={currentCreator}
             onSaveProfile={(newProf) => {
+              const handleKey = currentUser?.handle || activeHandle;
               setCreators(prev => ({
                 ...prev,
-                [activeHandle]: { ...prev[activeHandle], ...newProf }
+                [handleKey]: {
+                  ...(prev[handleKey] || {}),
+                  ...newProf,
+                  handle: handleKey
+                }
               }));
               setCurrentUser(prev => ({
-                ...(prev || { id: 'default-user', handle: activeHandle, email: 'creator@example.com' }),
-                avatar: newProf.avatar || prev?.avatar,
-                name: newProf.name || prev?.name
+                ...(prev || { id: 'default-user', handle: handleKey, email: 'creator@example.com' }),
+                ...newProf,
+                handle: handleKey
               }));
               showToast('プロフィールを保存しました');
             }}
@@ -297,6 +419,19 @@ export default function App() {
               setView('landing');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }} 
+          />
+        )}
+
+        {/* 5. 退会手続き専用Webページ */}
+        {view === 'delete-account' && (
+          <DeleteAccountPage 
+            currentUser={currentUser}
+            onGoBack={() => {
+              setView('landing');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            onOpenAuth={(mode) => setAuthMode(mode)}
+            onDeleteAccount={handleDeleteAccount}
           />
         )}
       </main>
@@ -387,6 +522,19 @@ export default function App() {
                     利用規約
                   </a>
                 </li>
+                <li>
+                  <a 
+                    href="#delete-account" 
+                    onClick={(e) => { 
+                      e.preventDefault(); 
+                      setView('delete-account'); 
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }} 
+                    style={{ color: '#ef4444', fontWeight: '600' }}
+                  >
+                    退会はこちら
+                  </a>
+                </li>
               </ul>
             </div>
 
@@ -405,25 +553,68 @@ export default function App() {
           initialMode={authMode}
           onClose={() => setAuthMode(null)}
           onLoginSuccess={(userData) => {
-            setCurrentUser(userData);
+            const handleKey = userData.handle;
+            let savedName = userData.name;
+            let savedAvatar = userData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
 
-            if (!creators[userData.handle]) {
+            if (!userData.isNewRegistration) {
+              const existing = creators[handleKey];
+              if (existing) {
+                if (existing.name) savedName = existing.name;
+                if (existing.avatar) savedAvatar = existing.avatar;
+              } else {
+                try {
+                  const saved = localStorage.getItem('v_art_creators');
+                  if (saved) {
+                    const parsed = JSON.parse(saved)[handleKey];
+                    if (parsed) {
+                      if (parsed.name) savedName = parsed.name;
+                      if (parsed.avatar) savedAvatar = parsed.avatar;
+                    }
+                  }
+                } catch (e) {}
+              }
+            } else {
+              // 新規登録 (または退会済みアカウントでの再登録) の場合:
+              // 古いキャッシュを完全に消去し、デフォルト初期値へ完全リセット
+              savedName = userData.name;
+              savedAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+              try {
+                const saved = localStorage.getItem('v_art_creators');
+                if (saved) {
+                  const parsed = JSON.parse(saved);
+                  delete parsed[handleKey];
+                  localStorage.setItem('v_art_creators', JSON.stringify(parsed));
+                }
+                localStorage.removeItem('v_art_current_user');
+              } catch (e) {}
+            }
+
+            const finalUserData = {
+              ...userData,
+              name: savedName,
+              avatar: savedAvatar
+            };
+
+            setCurrentUser(finalUserData);
+
+            if (userData.isNewRegistration || !creators[handleKey]) {
               setCreators(prev => ({
                 ...prev,
-                [userData.handle]: {
-                  handle: userData.handle,
-                  name: userData.name,
+                [handleKey]: {
+                  handle: handleKey,
+                  name: finalUserData.name,
                   bio: '',
-                  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+                  avatar: finalUserData.avatar,
                   banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
-                  snsLinks: { x: '', pixiv: '' }
+                  websiteLinks: [{ url: 'https://x.com', label: 'X' }]
                 }
               }));
             }
 
-            setActiveHandle(userData.handle);
+            setActiveHandle(handleKey);
             setView('editor');
-            showToast(`認証完了: ようこそ ${userData.name} 様。マイページ編集へ移動しました。`);
+            showToast(userData.isNewRegistration ? `新規アカウント登録完了: ようこそ ${finalUserData.name} 様。` : `ログイン完了: ようこそ ${finalUserData.name} 様。`);
           }}
         />
       )}

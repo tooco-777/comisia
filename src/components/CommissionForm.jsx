@@ -3,7 +3,7 @@ import { Send, CheckCircle2 } from 'lucide-react';
 import { sanitizeText, validateEmail } from '../utils/security';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
-export default function CommissionForm({ estimateSummary, onSuccess }) {
+export default function CommissionForm({ creatorId, estimateSummary, onSuccess }) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -34,8 +34,8 @@ export default function CommissionForm({ estimateSummary, onSuccess }) {
     e.preventDefault();
     const errs = {};
 
-    if (!formData.name.trim()) errs.name = 'お名前を入力してください';
-    if (!formData.email.trim() || !validateEmail(formData.email)) errs.email = '有効なメールアドレスを入力してください';
+    if (!formData.name.trim()) errs.name = 'お名前またはニックネームを入力してください';
+    if (!formData.email.trim() || !validateEmail(formData.email)) errs.email = '有効な連絡先メールアドレスを入力してください';
     if (!formData.characterDetail.trim()) errs.characterDetail = '依頼内容・キャラクター詳細を入力してください';
 
     if (Object.keys(errs).length > 0) {
@@ -48,6 +48,7 @@ export default function CommissionForm({ estimateSummary, onSuccess }) {
     if (isSupabaseConfigured && supabase) {
       try {
         const { error } = await supabase.from('commissions').insert({
+          creator_id: creatorId || null,
           client_name: sanitizeText(formData.name),
           client_email: formData.email,
           plan_type: sanitizeText(formData.planType),

@@ -41,6 +41,19 @@ export default function ProfileEditor({
     websiteLinks: initialWebsiteLinks()
   });
 
+  // 対象プロファイル(handle)切り替え時に同期
+  React.useEffect(() => {
+    if (profile) {
+      setEditedProfile({
+        name: profile.name || '',
+        bio: profile.bio || '',
+        avatar: profile.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80',
+        banner: profile.banner || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80',
+        websiteLinks: initialWebsiteLinks()
+      });
+    }
+  }, [profile?.handle]);
+
   // 画像トリミング用ステート
   const [cropTarget, setCropTarget] = useState(null); // { src, type: 'avatar' | 'banner', aspect }
 
@@ -168,6 +181,13 @@ export default function ProfileEditor({
             avatar_url: safeData.avatar,
             banner_url: safeData.banner,
             sns_links: { websiteLinks: safeData.websiteLinks }
+          });
+          await supabase.auth.updateUser({
+            data: {
+              name: safeData.name,
+              avatar: safeData.avatar,
+              handle: profile?.handle || user.email.split('@')[0]
+            }
           });
         }
       } catch (err) {
@@ -392,21 +412,14 @@ export default function ProfileEditor({
           </div>
         </div>
 
-        {/* クリエイター名 */}
+        {/* クリエイター名 ＝ ユーザーネーム */}
         <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-          <label style={{ fontSize: '0.85rem', fontWeight: '600' }}>クリエイター名</label>
+          <label style={{ fontSize: '0.85rem', fontWeight: '600' }}>クリエイター名（ユーザーネーム）</label>
           <input 
             type="text" className="form-input"
             value={editedProfile.name}
-            onChange={(e) => {
-              const newName = e.target.value;
-              const updated = { ...editedProfile, name: newName };
-              setEditedProfile(updated);
-              if (onSaveProfile) {
-                onSaveProfile(updated);
-              }
-            }}
-            placeholder="例: 山田 イラスト"
+            onChange={(e) => setEditedProfile({ ...editedProfile, name: e.target.value })}
+            placeholder="例: イラストスタジオ LUNA"
           />
         </div>
 

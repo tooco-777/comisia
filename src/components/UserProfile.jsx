@@ -205,6 +205,7 @@ export default function UserProfile({ profile, adopts, currentUser, onEditClick,
       {(activeTab === 'all' || activeTab === 'order') && (
         <section style={{ marginBottom: '4rem' }}>
           <CommissionForm 
+            creatorId={user.id}
             estimateSummary={estimateSummary} 
             onSuccess={(msg) => showToast && showToast(msg)} 
           />
