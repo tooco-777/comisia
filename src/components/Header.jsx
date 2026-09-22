@@ -38,12 +38,19 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
       }}>
         
         {/* 左グループ (左詰め): 【サイトロゴ】のみ (サイトアイコンは削除) */}
-        <div 
-          onClick={() => setView('landing')} 
+        <a 
+          href="/"
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+            e.preventDefault();
+            setView('landing');
+            window.scrollTo(0, 0);
+          }}
           style={{ 
             cursor: 'pointer', 
             display: 'flex', 
-            alignItems: 'center' 
+            alignItems: 'center',
+            textDecoration: 'none'
           }}
         >
           {/* サイトロゴ (Comisia文字) */}
@@ -56,7 +63,7 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
               objectFit: 'contain'
             }} 
           />
-        </div>
+        </a>
 
         {/* 右グループ (右詰め): 【ベルマーク】 ＋ 【マイページ】 ＋ 【ユーザーアイコン・ユーザーネーム】 */}
         <nav style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }}>
@@ -85,9 +92,14 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
               </button>
 
               {/* ユーザーネーム (クリックでマイページ移動) */}
-              <button
-                type="button"
-                onClick={() => setView('editor')}
+              <a
+                href="/editor"
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                  e.preventDefault();
+                  setView('editor');
+                  window.scrollTo(0, 0);
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -97,13 +109,14 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
                   fontWeight: '700',
                   padding: '4px 6px',
                   borderRadius: '6px',
+                  textDecoration: 'none',
                   transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => e.currentTarget.style.color = '#0f172a'}
                 onMouseLeave={(e) => e.currentTarget.style.color = '#475569'}
               >
                 {currentUser.name || currentUser.handle || 'ユーザー'}
-              </button>
+              </a>
 
               {/* ユーザーアイコン ＆ プルダウン */}
               <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -164,10 +177,13 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
                     flexDirection: 'column',
                     gap: '2px'
                   }}>
-                    <button
-                      type="button"
-                      onClick={() => {
+                    <a
+                      href="/editor"
+                      onClick={(e) => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                        e.preventDefault();
                         setView('editor');
+                        window.scrollTo(0, 0);
                         setDropdownOpen(false);
                       }}
                       style={{
@@ -184,6 +200,7 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
                         color: '#0f172a',
                         cursor: 'pointer',
                         textAlign: 'left',
+                        textDecoration: 'none',
                         transition: 'background 0.15s ease'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
@@ -191,7 +208,7 @@ export default function Header({ currentView, setView, currentUser, onOpenAuth, 
                     >
                       <User size={16} color="#3b82f6" />
                       マイページ
-                    </button>
+                    </a>
 
                     <div style={{ height: '1px', background: '#f1f5f9', margin: '2px 0' }}></div>
 

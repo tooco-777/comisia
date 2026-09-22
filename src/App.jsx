@@ -325,6 +325,48 @@ export default function App() {
     }
   }, [view, activeHandle]);
 
+  // 画面遷移時に必ずスクロール位置を最上部 (0, 0) へ即座にリセット
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view, activeHandle]);
+
+  // WEBページの <title> タグをアクティブページに合わせて動的更新
+  useEffect(() => {
+    let title = 'Comisia | クリエイターのための依頼受付＆アドプトプラットフォーム';
+    if (view === 'publicPage' && activeHandle) {
+      const creatorName = creators[activeHandle]?.name || activeHandle;
+      title = `${creatorName} (@${activeHandle}) | Comisia`;
+    } else if (view === 'about') {
+      title = 'Comisiaとは？ | Comisia';
+    } else if (view === 'faq') {
+      title = 'よくある質問 (FAQ) | Comisia';
+    } else if (view === 'contact') {
+      title = 'お問い合わせ | Comisia';
+    } else if (view === 'developer') {
+      title = '開発者情報 | Comisia';
+    } else if (view === 'terms') {
+      title = '利用規約 | Comisia';
+    } else if (view === 'delete-account') {
+      title = '退会手続き | Comisia';
+    } else if (view === 'editor') {
+      title = 'マイページ編集 | Comisia';
+    }
+    document.title = title;
+  }, [view, activeHandle, creators]);
+
+  // WEBページ遷移用共通ハンドラー
+  const navigateTo = (e, targetView, targetPath) => {
+    if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1)) {
+      return;
+    }
+    if (e) e.preventDefault();
+    setView(targetView);
+    window.scrollTo(0, 0);
+    if (targetPath && decodeURIComponent(window.location.pathname) !== targetPath) {
+      window.history.pushState({ view: targetView }, '', targetPath);
+    }
+  };
+
   // URL直接アクセス (https://comisia.app/@tooco_777) ＆ ブラウザ「戻る/進む」同期
   useEffect(() => {
     const handleUrlRouting = async () => {
@@ -441,8 +483,8 @@ export default function App() {
         }}
       />
 
-      {/* メイン画面切替 */}
-      <main style={{ flexGrow: 1 }}>
+      {/* メイン画面切替 (ページアニメーション付き) */}
+      <main key={view + (view === 'publicPage' ? activeHandle : '')} className="page-view-animate" style={{ flexGrow: 1 }}>
         
         {/* 1. サイトのトップページ */}
         {view === 'landing' && (
@@ -452,7 +494,7 @@ export default function App() {
             onSelectCreator={(handle) => {
               setActiveHandle(handle);
               setView('publicPage');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              window.scrollTo(0, 0);
             }}
           />
         )}
@@ -485,7 +527,7 @@ export default function App() {
             }}
             onGoToPublicPage={() => {
               setView('publicPage');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              window.scrollTo(0, 0);
             }}
           />
         )}
@@ -510,7 +552,7 @@ export default function App() {
             pageType={view} 
             onGoBack={() => {
               setView('landing');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              window.scrollTo(0, 0);
             }} 
           />
         )}
@@ -521,7 +563,7 @@ export default function App() {
             currentUser={currentUser}
             onGoBack={() => {
               setView('landing');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              window.scrollTo(0, 0);
             }}
             onOpenAuth={(mode) => setAuthMode(mode)}
             onDeleteAccount={handleDeleteAccount}
@@ -573,12 +615,12 @@ export default function App() {
               </div>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 <li>
-                  <a href="#about" onClick={(e) => { e.preventDefault(); setView('about'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ color: 'inherit' }}>
+                  <a href="/about" onClick={(e) => navigateTo(e, 'about', '/about')} style={{ color: 'inherit', textDecoration: 'none' }}>
                     Comisiaとは？
                   </a>
                 </li>
                 <li>
-                  <a href="#faq" onClick={(e) => { e.preventDefault(); setView('faq'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ color: 'inherit' }}>
+                  <a href="/faq" onClick={(e) => navigateTo(e, 'faq', '/faq')} style={{ color: 'inherit', textDecoration: 'none' }}>
                     よくある質問
                   </a>
                 </li>
@@ -592,12 +634,12 @@ export default function App() {
               </div>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 <li>
-                  <a href="#contact" onClick={(e) => { e.preventDefault(); setView('contact'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ color: 'inherit' }}>
+                  <a href="/contact" onClick={(e) => navigateTo(e, 'contact', '/contact')} style={{ color: 'inherit', textDecoration: 'none' }}>
                     お問い合わせ
                   </a>
                 </li>
                 <li>
-                  <a href="#developer" onClick={(e) => { e.preventDefault(); setView('developer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ color: 'inherit' }}>
+                  <a href="/developer" onClick={(e) => navigateTo(e, 'developer', '/developer')} style={{ color: 'inherit', textDecoration: 'none' }}>
                     開発者
                   </a>
                 </li>
@@ -611,19 +653,15 @@ export default function App() {
               </div>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 <li>
-                  <a href="#terms" onClick={(e) => { e.preventDefault(); setView('terms'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ color: 'inherit' }}>
+                  <a href="/terms" onClick={(e) => navigateTo(e, 'terms', '/terms')} style={{ color: 'inherit', textDecoration: 'none' }}>
                     利用規約
                   </a>
                 </li>
                 <li>
                   <a 
-                    href="#delete-account" 
-                    onClick={(e) => { 
-                      e.preventDefault(); 
-                      setView('delete-account'); 
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }} 
-                    style={{ color: '#ef4444', fontWeight: '600' }}
+                    href="/delete-account" 
+                    onClick={(e) => navigateTo(e, 'delete-account', '/delete-account')} 
+                    style={{ color: '#ef4444', fontWeight: '600', textDecoration: 'none' }}
                   >
                     退会はこちら
                   </a>
